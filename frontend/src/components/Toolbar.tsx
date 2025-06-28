@@ -1,8 +1,7 @@
 import { Component, createSignal } from "solid-js";
-import { IconButton } from ".";
+import { IconButton, Label, RangeInput, Row, SelectInput } from ".";
 import { BsChevronLeft, BsChevronRight } from "solid-icons/bs";
 
-// TODO: extract components
 interface IProps {}
 const Toolbar: Component<IProps> = () => {
   // TODO: consider setting actual sensitivity onChange and displaying it onInput when backend is implemented
@@ -10,10 +9,9 @@ const Toolbar: Component<IProps> = () => {
 
   return (
     <div class="w-full flex p-4 gap-4">
-      <div class="flex items-center gap-2">
-        <span class="text-neutral-500">Sensitivity:</span>
-        <input
-          type="range"
+      <Row>
+        <RangeInput
+          label="Sensitivity:"
           min={0}
           max={100}
           step={10}
@@ -22,17 +20,17 @@ const Toolbar: Component<IProps> = () => {
             setSensitivity(Number(e.currentTarget.value));
           }}
         />
-        <span class="text-neutral-500">{sensitivity()} %</span>
-      </div>
-      <div class="flex items-center gap-2">
-        <span class="text-neutral-500">Mode:</span>
-        <select class="border border-gray-300 rounded px-2 py-2 shadow-md bg-white">
-          <option value="similarity">Similarity</option>
-          <option value="named-entities">Named entities</option>
-        </select>
-      </div>
-      <div class="flex items-center gap-2">
-        <span class="text-neutral-500">Occurrences:</span>
+        <Label>{sensitivity()} %</Label>
+      </Row>
+      <SelectInput
+        label="Mode:"
+        options={[
+          { value: "similarity", label: "Similarity" },
+          { value: "named-entities", label: "Named Entities" },
+        ]}
+      />
+      <Row>
+        <Label>Occurrences:</Label>
         <IconButton
           icon={BsChevronLeft}
           onClick={() => {
@@ -45,7 +43,7 @@ const Toolbar: Component<IProps> = () => {
             // TODO: implement scroll jump to next similarity occurrence
           }}
         />
-      </div>
+      </Row>
     </div>
   );
 };

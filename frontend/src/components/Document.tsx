@@ -7,7 +7,7 @@ import {
   For,
   Show,
 } from "solid-js";
-import { IconButton } from ".";
+import { Col, IconButton, Label, Row, TextInput } from ".";
 
 interface IProps {
   uploadPrompt: string;
@@ -65,7 +65,7 @@ const Document: Component<IProps> = ({
           />
           <label
             for={`file-upload-${readonly ? "source" : "target"}`}
-            class="p-4 w-full h-full text-center hover:bg-gray-200 cursor-pointer flex flex-col items-center justify-center gap-2"
+            class="p-4 w-full h-full text-center hover:bg-gray-300 cursor-pointer flex flex-col items-center justify-center gap-2"
           >
             <BsUpload />
             {uploadPrompt}
@@ -73,9 +73,9 @@ const Document: Component<IProps> = ({
         </div>
       }
     >
-      <div class="flex flex-col overflow-auto h-full w-full p-4">
-        <div class="flex justify-between items-center mb-2 gap-2">
-          <div class="flex items-center gap-2">
+      <Col className="overflow-auto items-stretch h-full w-full">
+        <Row className="justify-between mb-2 m-[2px]">
+          <Row className="max-w-[50%]">
             <IconButton
               icon={BsUpload}
               onClick={() => {
@@ -86,15 +86,14 @@ const Document: Component<IProps> = ({
                 input.click();
               }}
             />
-            <span class="overflow-hidden text-ellipsis whitespace-nowrap shrink text-neutral-500">
+            <Label className="shrink text-ellipsis overflow-hidden whitespace-nowrap">
               {file()?.name}
-            </span>
-          </div>
-          <div class="flex items-center gap-2">
-            <input
+            </Label>
+          </Row>
+          <Row>
+            <TextInput
               type="text"
               placeholder="Search..."
-              class="border border-gray-300 rounded px-2 py-1 shadow-md"
               onInput={(e) => {
                 // TODO: save sentences that match the search term
                 // Allow to jump to the next match
@@ -112,13 +111,13 @@ const Document: Component<IProps> = ({
                 // TODO: implement scroll jump to next sentence
               }}
             />
-          </div>
-        </div>
+          </Row>
+        </Row>
         <div class="overflow-auto w-full border border-gray-300 flex-grow bg-white shadow-md">
           <For each={splitIntoSentences(content())}>
             {(sentence) => (
               <div
-                class={`border-b border-gray-300 py-1 w-full ${
+                class={`border-b border-gray-300 p-1 w-full ${
                   !readonly ? "hover:bg-gray-200" : ""
                 }`}
               >
@@ -127,7 +126,7 @@ const Document: Component<IProps> = ({
             )}
           </For>
         </div>
-      </div>
+      </Col>
     </Show>
   );
 };

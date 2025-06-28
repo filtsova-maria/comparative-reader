@@ -1,7 +1,10 @@
 import { createSignal, type Component } from "solid-js";
 import { Document, IconButton, Toolbar, Tooltip } from "./components";
 import { BsArrowLeftRight } from "solid-icons/bs";
-// TODO: analyze how to select and store segments for searching, scrolling and comparison highlighting, consider scrollIntoView and a custom scrollbar
+// TODO: analyze how to select and store segments for searching, scrolling and comparison highlighting, consider scrollIntoView
+// TODO: consider state management for search parameters possibly using a store or context
+// TODO: custom scrollbar component that highlights segments of interest, think about how to mark and access segments in the document
+// TODO: shortcuts for navigation, inputs and actions
 const App: Component = () => {
   const [sourceFile, setSourceFile] = createSignal<File | null>(null);
   const [targetFile, setTargetFile] = createSignal<File | null>(null);
@@ -9,11 +12,11 @@ const App: Component = () => {
   const bothFilesSelected = () =>
     sourceFile() !== null && targetFile() !== null;
   return (
-    <div class="flex flex-col h-screen w-screen bg-neutral-100">
+    <div class="flex flex-col h-screen w-screen bg-neutral-100 p-4">
       <div
         class={`grid ${
           bothFilesSelected() ? "grid-cols-[1fr_auto_1fr]" : "grid-cols-2"
-        } gap-1 h-screen items-center justify-items-center overflow-x-auto overflow-y-hidden`}
+        } gap-2 h-screen items-center justify-items-center overflow-x-auto`}
       >
         <Document
           file={sourceFile}

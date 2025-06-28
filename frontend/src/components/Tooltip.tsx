@@ -1,8 +1,8 @@
-import { Component, createSignal } from "solid-js";
+import { Component, createSignal, JSXElement } from "solid-js";
 
 interface IProps {
   text: string;
-  children: any;
+  children: JSXElement;
 }
 
 const Tooltip: Component<IProps> = ({ children, text }) => {
