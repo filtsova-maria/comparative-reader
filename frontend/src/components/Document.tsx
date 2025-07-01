@@ -14,6 +14,7 @@ interface IProps {
   readonly?: boolean;
   file: Accessor<File | null>;
   setFile: (file: File | null) => void;
+  id: string;
 }
 
 const Document: Component<IProps> = ({
@@ -21,8 +22,18 @@ const Document: Component<IProps> = ({
   file,
   setFile,
   readonly = false,
+  id,
 }) => {
+  // TODO: on search, store segments that match the search term
+  // When clicking on the next/previous buttons, scroll to the next/previous search result
   const [content, setContent] = createSignal<string>("");
+  const [currentOccurrence, setCurrentOccurrence] = createSignal<number>(0);
+
+  const styles = {
+    activeSegmentColors: "bg-cyan-100 hover:bg-cyan-200",
+    inactiveSegmentColors: "bg-white hover:bg-gray-200",
+    readonlySegmentColors: "bg-white",
+  };
 
   createEffect(() => {
     updateContent();
@@ -47,9 +58,19 @@ const Document: Component<IProps> = ({
     updateContent();
   }
 
-  function splitIntoSentences(text: string): string[] {
+  const splitIntoSentences = (text: string): string[] => {
     return text.match(/[^\.!\?]+[\.!\?]+/g) || [];
-  }
+  };
+
+  const getSegmentStyle = (idx: number): string => {
+    if (idx === currentOccurrence()) {
+      return styles.activeSegmentColors;
+    } else if (readonly) {
+      return styles.readonlySegmentColors;
+    } else {
+      return styles.inactiveSegmentColors;
+    }
+  };
 
   return (
     <Show
@@ -103,26 +124,41 @@ const Document: Component<IProps> = ({
               icon={BsChevronLeft}
               onClick={() => {
                 // TODO: implement scroll jump to previous sentence
+                document
+                  .getElementById(
+                    `${readonly ? "target" : "source"}-segment-${currentOccurrence() - 1}`,
+                  )
+                  ?.scrollIntoView({ behavior: "smooth", block: "center" });
+                setCurrentOccurrence((prev) => prev - 1);
               }}
             />
             <IconButton
               icon={BsChevronRight}
               onClick={() => {
                 // TODO: implement scroll jump to next sentence
+                // TODO: handle edge cases where currentOccurrence is the first or last sentence
+                document
+                  .getElementById(
+                    `${readonly ? "target" : "source"}-segment-${currentOccurrence() + 1}`,
+                  )
+                  ?.scrollIntoView({ behavior: "smooth", block: "center" });
+                setCurrentOccurrence((prev) => prev + 1);
               }}
             />
           </Row>
         </Row>
-        <div class="overflow-auto w-full border border-gray-300 flex-grow bg-white shadow-md">
+        <div
+          id={`${id}-text`}
+          class="overflow-auto w-full border border-gray-300 flex-grow bg-white shadow-md"
+        >
           <For each={splitIntoSentences(content())}>
-            {(sentence) => (
-              <div
-                class={`border-b border-gray-300 p-1 w-full ${
-                  !readonly ? "hover:bg-gray-200" : ""
-                }`}
+            {(sentence, idx) => (
+              <a
+                class={`block border-b border-gray-300 p-1 w-full ${getSegmentStyle(idx())}`}
+                id={`${readonly ? "target" : "source"}-segment-${idx()}`}
               >
                 {sentence}
-              </div>
+              </a>
             )}
           </For>
         </div>
