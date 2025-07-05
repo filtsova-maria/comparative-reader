@@ -24,17 +24,21 @@ const Document: Component<IProps> = ({
   readonly = false,
   id,
 }) => {
-  // TODO: on search, store segments that match the search term
-  // When clicking on the next/previous buttons, scroll to the next/previous search result
   const [content, setContent] = createSignal<string>("");
+  const [searchTerm, setSearchTerm] = createSignal<string>("");
+  const [searchResults, setSearchResults] = createSignal<string[]>([]);
   const [currentOccurrence, setCurrentOccurrence] = createSignal<number>(0);
 
+  // TODO: refactor component, extract scrolling logic to a separate function
+  // and use it in both search and segment click handlers
+
   const styles = {
-    // TODO: switch to making search text bold instead of changing background color
-    // and use colorful highlighting for semantic search
+    // TODO: switch to making search text bold instead of changing background color and use colorful highlighting for semantic search
     activeSegmentColors: "bg-cyan-100 hover:bg-cyan-200",
     inactiveSegmentColors: "bg-white hover:bg-gray-200",
     readonlySegmentColors: "bg-white",
+    foundSegmentColors: "bg-yellow-100 hover:bg-yellow-200",
+    foundCurrentSegmentColors: "bg-yellow-300 hover:bg-yellow-400",
   };
 
   createEffect(() => {
@@ -64,14 +68,15 @@ const Document: Component<IProps> = ({
     return text.match(/[^\.!\?]+[\.!\?]+/g) || [];
   };
 
-  const getSegmentStyle = (idx: number): string => {
-    if (idx === currentOccurrence()) {
-      return styles.activeSegmentColors;
-    } else if (readonly) {
-      return styles.readonlySegmentColors;
-    } else {
-      return styles.inactiveSegmentColors;
+  const getSegmentStyle = (id: string): string => {
+    if (searchResults().includes(id)) {
+      return currentOccurrence() === searchResults().indexOf(id)
+        ? styles.foundCurrentSegmentColors
+        : styles.foundSegmentColors;
     }
+    return readonly
+      ? styles.readonlySegmentColors
+      : styles.inactiveSegmentColors;
   };
 
   return (
@@ -118,33 +123,77 @@ const Document: Component<IProps> = ({
               type="text"
               placeholder="Search..."
               onInput={(e) => {
-                // TODO: save sentences that match the search term
-                // Allow to jump to the next match
+                // TODO: consider debouncing this input
+                // TODO: show number of occurrences found and current occurrence
+                setSearchTerm(e.currentTarget.value);
+                if (e.currentTarget.value === "") {
+                  setSearchResults([]);
+                  setCurrentOccurrence(0);
+                  return;
+                }
+                const parentElement = document.getElementById(`${id}-text`);
+                if (parentElement) {
+                  const children = Array.from(parentElement.children);
+                  const matches = children
+                    .filter((child) =>
+                      child.textContent
+                        ?.toLowerCase()
+                        .includes(searchTerm().toLowerCase()),
+                    )
+                    .map((child) => child.id);
+                  setSearchResults(matches);
+                }
+                setCurrentOccurrence(0);
+                document
+                  .getElementById(searchResults()[currentOccurrence()])
+                  ?.scrollIntoView({ behavior: "smooth", block: "center" });
               }}
+              value={searchTerm()}
             />
             <IconButton
               icon={BsChevronLeft}
+              // TODO: debug disabled state reactive updates
+              // disabled={
+              //   searchResults().length === 0 || currentOccurrence() === 0
+              // }
               onClick={() => {
-                // TODO: implement scroll jump to previous sentence
-                document
-                  .getElementById(
-                    `${readonly ? "target" : "source"}-segment-${currentOccurrence() - 1}`,
-                  )
-                  ?.scrollIntoView({ behavior: "smooth", block: "center" });
-                setCurrentOccurrence((prev) => prev - 1);
+                setCurrentOccurrence((prev) => {
+                  const next = prev - 1;
+                  if (next >= 0) {
+                    const scrollElement = document.getElementById(
+                      searchResults()[next],
+                    );
+                    scrollElement?.scrollIntoView({
+                      behavior: "smooth",
+                      block: "center",
+                    });
+                    return next;
+                  }
+                  return prev;
+                });
               }}
             />
             <IconButton
               icon={BsChevronRight}
+              // disabled={
+              //   searchResults().length === 0 ||
+              //   currentOccurrence() >= searchResults().length - 1
+              // }
               onClick={() => {
-                // TODO: implement scroll jump to next sentence
-                // TODO: handle edge cases where currentOccurrence is the first or last sentence
-                document
-                  .getElementById(
-                    `${readonly ? "target" : "source"}-segment-${currentOccurrence() + 1}`,
-                  )
-                  ?.scrollIntoView({ behavior: "smooth", block: "center" });
-                setCurrentOccurrence((prev) => prev + 1);
+                setCurrentOccurrence((prev) => {
+                  const next = prev + 1;
+                  if (prev < searchResults().length - 1) {
+                    const scrollElement = document.getElementById(
+                      searchResults()[next],
+                    );
+                    scrollElement?.scrollIntoView({
+                      behavior: "smooth",
+                      block: "center",
+                    });
+                    return next;
+                  }
+                  return prev;
+                });
               }}
             />
           </Row>
@@ -155,14 +204,17 @@ const Document: Component<IProps> = ({
             class="overflow-scroll w-full border border-gray-300 flex-grow bg-white shadow-md"
           >
             <For each={splitIntoSentences(content())}>
-              {(sentence, idx) => (
-                <a
-                  class={`block border-b border-gray-300 p-1 w-full ${getSegmentStyle(idx())}`}
-                  id={`${readonly ? "target" : "source"}-segment-${idx()}`}
-                >
-                  {sentence}
-                </a>
-              )}
+              {(sentence, idx) => {
+                const segmentId = `${readonly ? "target" : "source"}-segment-${idx()}`;
+                return (
+                  <a
+                    class={`block border-b border-gray-300 p-1 w-full ${getSegmentStyle(segmentId)}`}
+                    id={segmentId}
+                  >
+                    {sentence}
+                  </a>
+                );
+              }}
             </For>
           </div>
           <Show when={readonly}>
