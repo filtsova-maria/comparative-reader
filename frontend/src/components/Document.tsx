@@ -30,6 +30,8 @@ const Document: Component<IProps> = ({
   const [currentOccurrence, setCurrentOccurrence] = createSignal<number>(0);
 
   const styles = {
+    // TODO: switch to making search text bold instead of changing background color
+    // and use colorful highlighting for semantic search
     activeSegmentColors: "bg-cyan-100 hover:bg-cyan-200",
     inactiveSegmentColors: "bg-white hover:bg-gray-200",
     readonlySegmentColors: "bg-white",
@@ -94,7 +96,7 @@ const Document: Component<IProps> = ({
         </div>
       }
     >
-      <Col className="overflow-auto items-stretch h-full w-full">
+      <Col className="overflow-hidden items-stretch h-full w-full">
         <Row className="justify-between mb-2 m-[2px]">
           <Row className="max-w-[50%]">
             <IconButton
@@ -147,21 +149,26 @@ const Document: Component<IProps> = ({
             />
           </Row>
         </Row>
-        <div
-          id={`${id}-text`}
-          class="overflow-auto w-full border border-gray-300 flex-grow bg-white shadow-md"
-        >
-          <For each={splitIntoSentences(content())}>
-            {(sentence, idx) => (
-              <a
-                class={`block border-b border-gray-300 p-1 w-full ${getSegmentStyle(idx())}`}
-                id={`${readonly ? "target" : "source"}-segment-${idx()}`}
-              >
-                {sentence}
-              </a>
-            )}
-          </For>
-        </div>
+        <Row className="overflow-hidden items-stretch">
+          <div
+            id={`${id}-text`}
+            class="overflow-scroll w-full border border-gray-300 flex-grow bg-white shadow-md"
+          >
+            <For each={splitIntoSentences(content())}>
+              {(sentence, idx) => (
+                <a
+                  class={`block border-b border-gray-300 p-1 w-full ${getSegmentStyle(idx())}`}
+                  id={`${readonly ? "target" : "source"}-segment-${idx()}`}
+                >
+                  {sentence}
+                </a>
+              )}
+            </For>
+          </div>
+          <Show when={readonly}>
+            <div class="bg-gray-200 h-svh w-6"></div>
+          </Show>
+        </Row>
       </Col>
     </Show>
   );
