@@ -1,12 +1,15 @@
 import { createSignal, type Component } from "solid-js";
 import { Document, IconButton, Toolbar, Tooltip } from "./components";
 import { BsArrowLeftRight } from "solid-icons/bs";
-// TODO: consider state management for search parameters possibly using a store or context
+// TODO: use store and context to manage search state
 // TODO: custom scrollbar component that highlights segments of interest, think about how to mark and access segments in the document
 // TODO: shortcuts for navigation, inputs and actions
 const App: Component = () => {
   const [sourceFile, setSourceFile] = createSignal<File | null>(null);
   const [targetFile, setTargetFile] = createSignal<File | null>(null);
+
+  let resetSourceSearchState: () => void;
+  let resetTargetSearchState: () => void;
 
   const bothFilesSelected = () =>
     sourceFile() !== null && targetFile() !== null;
@@ -22,17 +25,21 @@ const App: Component = () => {
           setFile={setSourceFile}
           uploadPrompt="Upload a text document."
           id="source"
+          onResetSearchState={(resetFn) => {
+            resetSourceSearchState = resetFn;
+          }}
         />
         {sourceFile() && targetFile() && (
           <Tooltip text="Swap documents">
             <IconButton
               icon={BsArrowLeftRight}
               onClick={() => {
-                // TODO: reset search parameters and scroll positions
-                // Consider using a store or context for managing search state
                 const source = sourceFile();
                 setSourceFile(targetFile());
                 setTargetFile(source);
+
+                resetSourceSearchState();
+                resetTargetSearchState();
               }}
             />
           </Tooltip>
@@ -43,6 +50,9 @@ const App: Component = () => {
           readonly
           uploadPrompt="Upload a document to compare."
           id="target"
+          onResetSearchState={(resetFn) => {
+            resetTargetSearchState = resetFn;
+          }}
         />
       </div>
       {bothFilesSelected() && <Toolbar />}
