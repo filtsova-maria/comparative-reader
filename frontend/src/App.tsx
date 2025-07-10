@@ -1,5 +1,5 @@
 import { createSignal, type Component } from "solid-js";
-import { Document, IconButton, Toolbar, Tooltip } from "./components";
+import { BottomToolbar, Document, IconButton, Tooltip } from "./components";
 import { BsArrowLeftRight } from "solid-icons/bs";
 // TODO: use store and context to manage search state
 // TODO: custom scrollbar component that highlights segments of interest, think about how to mark and access segments in the document
@@ -55,7 +55,7 @@ const App: Component = () => {
           }}
         />
       </div>
-      {bothFilesSelected() && <Toolbar />}
+      {bothFilesSelected() && <BottomToolbar />}
     </div>
   );
 };

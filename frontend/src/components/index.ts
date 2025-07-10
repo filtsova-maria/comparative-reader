@@ -1,7 +1,7 @@
 export { default as IconButton } from "./IconButton";
-export { default as Document } from "./Document";
+export { default as Document } from "./Document/Document";
 export { default as Tooltip } from "./Tooltip";
-export { default as Toolbar } from "./Toolbar";
+export { default as BottomToolbar } from "./BottomToolbar";
 export { default as Label } from "./Label";
 export { default as Col } from "./layout/Col";
 export { default as Row } from "./layout/Row";
