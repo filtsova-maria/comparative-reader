@@ -8,15 +8,11 @@ import { TDocumentType, useDocumentStore } from "../../store/DocumentStore";
 interface IProps {
   fileName: string;
   handleFileChange: (event: Event) => void;
-  id: TDocumentType;
+  type: TDocumentType;
 }
 
 const Toolbar: Component<IProps> = (props) => {
   const { documentStore } = useDocumentStore();
-
-  const onSearchTermChange = (term: string) => {
-    documentStore.setSearchTerm(props.id, term);
-  };
 
   return (
     <Row className="justify-between mb-2 m-[2px]">
@@ -36,39 +32,40 @@ const Toolbar: Component<IProps> = (props) => {
         </Label>
       </Row>
       <Row>
-        {documentStore[props.id].searchResults.length > 0 && (
+        {documentStore[props.type].searchResults.length > 0 && (
           <Label className="text-sm">
-            {documentStore[props.id].currentOccurrence + 1}/
-            {documentStore[props.id].searchResults.length}
+            {documentStore[props.type].currentOccurrence + 1}/
+            {documentStore[props.type].searchResults.length}
           </Label>
         )}
         <TextInput
           type="text"
           placeholder="Search..."
           onInput={(e) => {
-            onSearchTermChange(e.currentTarget.value);
+            documentStore.setSearchTerm(props.type, e.currentTarget.value);
           }}
-          value={documentStore[props.id].searchTerm}
+          value={documentStore[props.type].searchTerm}
+          id={`${props.type}-search-input`}
         />
         <IconButton
           icon={BsChevronLeft}
           disabled={
-            documentStore[props.id].searchResults.length === 0 ||
-            documentStore[props.id].currentOccurrence === 0
+            documentStore[props.type].searchResults.length === 0 ||
+            documentStore[props.type].currentOccurrence === 0
           }
           onClick={() => {
-            documentStore.setCurrentOccurrence(props.id, "previous");
+            documentStore.setCurrentOccurrence(props.type, "previous");
           }}
         />
         <IconButton
           icon={BsChevronRight}
           disabled={
-            documentStore[props.id].searchResults.length === 0 ||
-            documentStore[props.id].currentOccurrence >=
-              documentStore[props.id].searchResults.length - 1
+            documentStore[props.type].searchResults.length === 0 ||
+            documentStore[props.type].currentOccurrence >=
+              documentStore[props.type].searchResults.length - 1
           }
           onClick={() => {
-            documentStore.setCurrentOccurrence(props.id, "next");
+            documentStore.setCurrentOccurrence(props.type, "next");
           }}
         />
       </Row>

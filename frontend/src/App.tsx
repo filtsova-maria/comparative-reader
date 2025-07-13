@@ -16,7 +16,7 @@ const App: Component = () => {
           bothFilesSelected() ? "grid-cols-[1fr_auto_1fr]" : "grid-cols-2"
         } gap-2 h-screen items-center justify-items-center overflow-x-auto`}
       >
-        <Document uploadPrompt="Upload a text document." id="source" />
+        <Document uploadPrompt="Upload a text document." type="source" />
         {documentStore.source.file && documentStore.target.file && (
           <Tooltip text="Swap documents">
             <IconButton
@@ -32,7 +32,7 @@ const App: Component = () => {
         <Document
           readonly
           uploadPrompt="Upload a document to compare."
-          id="target"
+          type="target"
         />
       </div>
       {bothFilesSelected() && <BottomToolbar />}

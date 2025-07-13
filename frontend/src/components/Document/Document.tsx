@@ -8,28 +8,28 @@ import { TDocumentType, useDocumentStore } from "../../store/DocumentStore";
 interface IProps {
   uploadPrompt: string;
   readonly?: boolean;
-  id: TDocumentType;
+  type: TDocumentType;
 }
 
 const Document: Component<IProps> = (props) => {
   const { documentStore } = useDocumentStore();
 
   createEffect(() => {
-    documentStore.updateContent(props.id);
+    documentStore.updateContent(props.type);
   });
 
   async function handleFileChange(e: Event) {
     const input = e.target as HTMLInputElement;
     const file = input.files?.[0] ?? null;
-    documentStore.setFile(props.id, file);
+    documentStore.setFile(props.type, file);
   }
 
   return (
     <Show
-      when={documentStore[props.id].file !== null}
+      when={documentStore[props.type].file !== null}
       fallback={
         <UploadInput
-          id={props.id}
+          type={props.type}
           uploadPrompt={props.uploadPrompt}
           handleFileChange={handleFileChange}
         />
@@ -37,11 +37,11 @@ const Document: Component<IProps> = (props) => {
     >
       <Col className="overflow-y-hidden items-stretch h-full w-full">
         <Toolbar
-          fileName={documentStore[props.id].file?.name ?? "No file selected"}
+          fileName={documentStore[props.type].file?.name ?? "No file selected"}
           handleFileChange={handleFileChange}
-          id={props.id}
+          type={props.type}
         />
-        <Content type={props.id} readonly={props.readonly} />
+        <Content type={props.type} readonly={props.readonly} />
       </Col>
     </Show>
   );
