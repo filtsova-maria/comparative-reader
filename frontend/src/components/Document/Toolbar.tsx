@@ -1,19 +1,23 @@
-import { Accessor, Component, Setter } from "solid-js";
+import { Component } from "solid-js";
 import { Row, Label } from "..";
 import IconButton from "../IconButton";
 import { BsChevronLeft, BsChevronRight, BsUpload } from "solid-icons/bs";
 import TextInput from "../inputs/TextInput";
-import { scrollToSegment } from "./utils";
+import { TDocumentType, useDocumentStore } from "../../store/DocumentStore";
 
-const Toolbar: Component<{
+interface IProps {
   fileName: string;
-  handleFileChange: (e: Event) => void;
-  searchResults: Accessor<string[]>;
-  currentOccurrence: Accessor<number>;
-  setCurrentOccurrence: Setter<number>;
-  onSearchTermChange: (term: string) => void;
-  searchTerm: Accessor<string>;
-}> = (props) => {
+  handleFileChange: (event: Event) => void;
+  id: TDocumentType;
+}
+
+const Toolbar: Component<IProps> = (props) => {
+  const { documentStore } = useDocumentStore();
+
+  const onSearchTermChange = (term: string) => {
+    documentStore.setSearchTerm(props.id, term);
+  };
+
   return (
     <Row className="justify-between mb-2 m-[2px]">
       <Row className="max-w-[50%]">
@@ -32,51 +36,39 @@ const Toolbar: Component<{
         </Label>
       </Row>
       <Row>
-        {props.searchResults().length > 0 && (
+        {documentStore[props.id].searchResults.length > 0 && (
           <Label className="text-sm">
-            {props.currentOccurrence() + 1}/{props.searchResults().length}
+            {documentStore[props.id].currentOccurrence + 1}/
+            {documentStore[props.id].searchResults.length}
           </Label>
         )}
         <TextInput
           type="text"
           placeholder="Search..."
           onInput={(e) => {
-            props.onSearchTermChange(e.currentTarget.value);
+            onSearchTermChange(e.currentTarget.value);
           }}
-          value={props.searchTerm()}
+          value={documentStore[props.id].searchTerm}
         />
         <IconButton
           icon={BsChevronLeft}
           disabled={
-            props.searchResults().length === 0 ||
-            props.currentOccurrence() === 0
+            documentStore[props.id].searchResults.length === 0 ||
+            documentStore[props.id].currentOccurrence === 0
           }
           onClick={() => {
-            props.setCurrentOccurrence((prev) => {
-              const next = prev - 1;
-              if (next >= 0) {
-                scrollToSegment(props.searchResults()[next]);
-                return next;
-              }
-              return prev;
-            });
+            documentStore.setCurrentOccurrence(props.id, "previous");
           }}
         />
         <IconButton
           icon={BsChevronRight}
           disabled={
-            props.searchResults().length === 0 ||
-            props.currentOccurrence() >= props.searchResults().length - 1
+            documentStore[props.id].searchResults.length === 0 ||
+            documentStore[props.id].currentOccurrence >=
+              documentStore[props.id].searchResults.length - 1
           }
           onClick={() => {
-            props.setCurrentOccurrence((prev) => {
-              const next = prev + 1;
-              if (prev < props.searchResults().length - 1) {
-                scrollToSegment(props.searchResults()[next]);
-                return next;
-              }
-              return prev;
-            });
+            documentStore.setCurrentOccurrence(props.id, "next");
           }}
         />
       </Row>

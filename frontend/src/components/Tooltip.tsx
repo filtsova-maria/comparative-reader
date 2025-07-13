@@ -5,7 +5,7 @@ interface IProps {
   children: JSXElement;
 }
 
-const Tooltip: Component<IProps> = ({ children, text }) => {
+const Tooltip: Component<IProps> = (props) => {
   const [visible, setVisible] = createSignal(false);
   return (
     <div
@@ -13,10 +13,10 @@ const Tooltip: Component<IProps> = ({ children, text }) => {
       onMouseEnter={() => setVisible(true)}
       onMouseLeave={() => setVisible(false)}
     >
-      {children}
+      {props.children}
       {visible() && (
         <div class="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-600 text-white text-sm rounded px-2 py-1 shadow-lg">
-          {text}
+          {props.text}
         </div>
       )}
     </div>
