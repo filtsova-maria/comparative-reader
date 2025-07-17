@@ -4,12 +4,10 @@ import { Row } from "..";
 import { TDocumentType, useDocumentStore } from "../../store/DocumentStore";
 
 const styles = {
-  // TODO: switch to making search text bold instead of changing background color and use colorful highlighting for semantic search
   activeSegmentColors: "bg-cyan-100 hover:bg-cyan-200",
   inactiveSegmentColors: "bg-white hover:bg-gray-200",
   readonlySegmentColors: "bg-white",
-  foundSegmentColors: "bg-yellow-100 hover:bg-yellow-200",
-  foundCurrentSegmentColors: "bg-yellow-300 hover:bg-yellow-400",
+  foundCurrentSegmentColors: "bg-gray-200",
 };
 
 interface IProps {
@@ -19,13 +17,12 @@ interface IProps {
 
 const Content: Component<IProps> = (props) => {
   const { documentStore } = useDocumentStore();
-  // TODO: highlight search results, fix issues with solid-js reactivity
   const getSegmentStyle = (id: string): string => {
     if (documentStore[props.type].searchResults.includes(id)) {
       return documentStore[props.type].currentOccurrence ===
         documentStore[props.type].searchResults.indexOf(id)
         ? styles.foundCurrentSegmentColors
-        : styles.foundSegmentColors;
+        : styles.inactiveSegmentColors;
     }
     return props.readonly
       ? styles.readonlySegmentColors
@@ -40,12 +37,25 @@ const Content: Component<IProps> = (props) => {
         <For each={splitIntoSentences(documentStore[props.type].content)}>
           {(sentence, idx) => {
             const segmentId = `${props.type}-segment-${idx()}`;
+            const highlightSentence = (s: string) => {
+              const searchTerm = documentStore[props.type].searchTerm;
+              if (!searchTerm) return s;
+
+              const parts = s.split(new RegExp(`(${searchTerm})`, "gi"));
+              return parts.map((part) =>
+                part.toLowerCase() === searchTerm.toLowerCase() ? (
+                  <strong class="font-bold">{part}</strong>
+                ) : (
+                  part
+                ),
+              );
+            };
             return (
               <a
                 class={`block border-b border-gray-300 p-1 w-full ${getSegmentStyle(segmentId)}`}
                 id={segmentId}
               >
-                {sentence}
+                {highlightSentence(sentence)}
               </a>
             );
           }}
