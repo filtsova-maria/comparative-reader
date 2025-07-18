@@ -1,6 +1,10 @@
 import { Component, createContext, useContext } from "solid-js";
 import { createStore } from "solid-js/store";
-import { scrollToSegment } from "../components/Document/utils";
+import {
+  getSegmentIdByIndex,
+  getSegmentIndexById,
+  scrollToSegment,
+} from "../components/Document/utils";
 
 export interface DocumentState {
   file: File | null;
@@ -8,6 +12,7 @@ export interface DocumentState {
   searchTerm: string;
   searchResults: string[];
   currentOccurrence: number;
+  selectedSegments: string[];
 }
 export interface DocumentStore {
   source: DocumentState;
@@ -19,6 +24,14 @@ export interface DocumentStore {
     type: TDocumentType,
     direction: "next" | "previous",
   ) => void;
+  toggleSegmentSelection: (type: TDocumentType, segmentId: string) => void;
+  selectMultipleSegments: (type: TDocumentType, segmentIds: string[]) => void;
+  clearSelection: (type: TDocumentType) => void;
+  selectSegmentRange: (
+    type: TDocumentType,
+    startId: string,
+    endId: string,
+  ) => void;
 }
 
 const initialState: DocumentState = {
@@ -27,6 +40,7 @@ const initialState: DocumentState = {
   searchTerm: "",
   searchResults: [],
   currentOccurrence: 0,
+  selectedSegments: [],
 };
 
 const [documentStore, setDocumentStore] = createStore<DocumentStore>({
@@ -41,6 +55,7 @@ const [documentStore, setDocumentStore] = createStore<DocumentStore>({
       searchResults: [],
       currentOccurrence: 0,
     });
+    this.clearSelection(type);
     // Manually clear the search input fields
     ["source-search-input", "target-search-input"].forEach((id) => {
       const input = document.getElementById(id) as HTMLInputElement | null;
@@ -77,7 +92,9 @@ const [documentStore, setDocumentStore] = createStore<DocumentStore>({
       .map((line, index) => (line.includes(term.toLowerCase()) ? index : -1))
       .filter((index) => index !== -1);
 
-    const searchResults = matches.map((index) => `${type}-segment-${index}`);
+    const searchResults = matches.map((index) =>
+      getSegmentIdByIndex(type, index),
+    );
     const currentOccurrence = 0;
     setDocumentStore(type, {
       searchResults,
@@ -109,6 +126,44 @@ const [documentStore, setDocumentStore] = createStore<DocumentStore>({
       }
       return prev;
     });
+  },
+
+  toggleSegmentSelection(type: TDocumentType, segmentId: string) {
+    setDocumentStore(
+      type,
+      "selectedSegments",
+      (segments) =>
+        segments.includes(segmentId)
+          ? segments.filter((id) => id !== segmentId) // Unselect if already selected
+          : [...segments, segmentId], // Add to selection if not selected
+    );
+  },
+
+  selectMultipleSegments(type: TDocumentType, segmentIds: string[]) {
+    setDocumentStore(type, "selectedSegments", (segments) => [
+      ...new Set([...segments, ...segmentIds]), // Add unique segment IDs
+    ]);
+  },
+
+  selectSegmentRange(type: TDocumentType, startId: string, endId: string) {
+    const startIndex = getSegmentIndexById(startId);
+    const endIndex = getSegmentIndexById(endId);
+
+    if (startIndex === -1 || endIndex === -1) return;
+
+    const range = Array.from(
+      { length: Math.abs(endIndex - startIndex) + 1 },
+      (_, i) => {
+        const index = startIndex < endIndex ? startIndex + i : endIndex + i;
+        return getSegmentIdByIndex(type, index);
+      },
+    );
+
+    setDocumentStore(type, "selectedSegments", range);
+  },
+
+  clearSelection(type: TDocumentType) {
+    setDocumentStore(type, "selectedSegments", []);
   },
 });
 
