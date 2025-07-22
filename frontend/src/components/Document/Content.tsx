@@ -2,6 +2,7 @@ import { Component, For, Show } from "solid-js";
 import { getSegmentIdByIndex, splitIntoSentences } from "./utils";
 import { Row } from "..";
 import { TDocumentType, useDocumentStore } from "../../store/DocumentStore";
+import { createKeyHold } from "@solid-primitives/keyboard";
 
 const styles = {
   activeSegmentColors: "bg-cyan-100 hover:bg-cyan-200",
@@ -19,9 +20,10 @@ const Content: Component<IProps> = (props) => {
   const { documentStore } = useDocumentStore();
   let isSelecting = false;
   let startSegmentId: string | null = null;
+  const ctrlKeyPressed = createKeyHold("Control");
 
   const getSegmentStyle = (id: string): string => {
-    if (documentStore[props.type].selectedSegments.includes(id)) {
+    if (documentStore.selectedSegments.includes(id)) {
       return styles.activeSegmentColors;
     }
     if (documentStore[props.type].searchResults.includes(id)) {
@@ -38,15 +40,16 @@ const Content: Component<IProps> = (props) => {
   const handleMouseDown = (segmentId: string) => {
     isSelecting = true;
     startSegmentId = segmentId;
-    documentStore.toggleSegmentSelection(props.type, segmentId);
+    documentStore.toggleSegmentSelection(segmentId);
   };
 
   const handleMouseOver = (segmentId: string) => {
     if (isSelecting && startSegmentId) {
-      documentStore.selectSegmentRange(props.type, startSegmentId, segmentId);
-      // TODO: add selection removal via ESC
-      // TODO: only allow selection on the readonly document
-      // TODO: allow for additional selection with ctrl
+      documentStore.selectSegmentRange(
+        startSegmentId,
+        segmentId,
+        ctrlKeyPressed(),
+      );
     }
   };
 
@@ -74,7 +77,7 @@ const Content: Component<IProps> = (props) => {
       <div
         id={`${props.type}-text`}
         class="overflow-scroll w-full border border-gray-300 flex-grow bg-white shadow-md"
-        onMouseUp={handleMouseUp}
+        onMouseUp={props.type === "source" ? handleMouseUp : undefined}
       >
         <For each={splitIntoSentences(documentStore[props.type].content)}>
           {(sentence, idx) => {
@@ -84,8 +87,16 @@ const Content: Component<IProps> = (props) => {
               <a
                 class={`block border-b border-gray-300 p-1 w-full ${getSegmentStyle(segmentId)}`}
                 id={segmentId}
-                onMouseDown={() => handleMouseDown(segmentId)}
-                onMouseOver={() => handleMouseOver(segmentId)}
+                onMouseDown={
+                  props.type === "source"
+                    ? () => handleMouseDown(segmentId)
+                    : undefined
+                }
+                onMouseOver={
+                  props.type === "source"
+                    ? () => handleMouseOver(segmentId)
+                    : undefined
+                }
               >
                 {highlightSentence(sentence)}
               </a>
