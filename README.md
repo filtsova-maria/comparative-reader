@@ -64,11 +64,11 @@ You need [yarn](https://classic.yarnpkg.com/lang/en/docs/install/) to install an
 3. **Activate the virtual environment**:
   - On Windows:
     ```bash
-    venv\Scripts\activate
+    .venv\Scripts\activate
     ```
   - On macOS/Linux:
     ```bash
-    source venv/bin/activate
+    source .venv/bin/activate
     ```
 
 4. **Install dependencies**:
