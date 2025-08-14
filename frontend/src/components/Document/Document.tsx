@@ -21,7 +21,8 @@ const Document: Component<IProps> = (props) => {
   async function handleFileChange(e: Event) {
     const input = e.target as HTMLInputElement;
     const file = input.files?.[0] ?? null;
-    documentStore.setFile(props.type, file);
+    await documentStore.setFile(props.type, file);
+    await documentStore.uploadSegments(props.type);
   }
 
   return (
