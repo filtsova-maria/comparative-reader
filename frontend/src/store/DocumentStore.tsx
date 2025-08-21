@@ -189,6 +189,7 @@ sensitivity: 50,
 
   clearSelection() {
     setDocumentStore("selectedSegments", []);
+    setDocumentStore("similarities", []);
   },
 
   async uploadSegments(type) {
