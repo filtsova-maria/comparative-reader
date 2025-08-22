@@ -16,15 +16,11 @@ const styles = {
   foundCurrentSegmentColors: "bg-gray-200",
 };
 const similarityShades = [
-  "bg-cyan-100/40",
-  "bg-cyan-200/40",
-  "bg-cyan-300/40",
-  "bg-cyan-400/40",
-  "bg-cyan-500/40",
-  "bg-cyan-600/40",
-  "bg-cyan-700/40",
-  "bg-cyan-800/40",
-  "bg-cyan-900/40",
+  "bg-highlight-1",
+  "bg-highlight-2",
+  "bg-highlight-3",
+  "bg-highlight-4",
+  "bg-highlight-5",
 ];
 
 /**
@@ -34,7 +30,10 @@ const similarityShades = [
  * @returns CSS class for segment background color
  */
 const calculateSegmentHighlightStyle = (similarity: number): string => {
-  const index = Math.round(similarity * (similarityShades.length - 1));
+  const index = Math.min(
+    Math.ceil(similarity * similarityShades.length) - 1,
+    similarityShades.length - 1,
+  );
   return similarityShades[index];
 };
 

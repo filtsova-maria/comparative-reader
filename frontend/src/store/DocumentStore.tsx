@@ -163,6 +163,9 @@ sensitivity: 50,
           ? segments.filter((id) => id !== segmentId) // Unselect if already selected
           : [...segments, segmentId], // Add to selection if not selected
     );
+    if (documentStore.selectedSegments.length === 0) {
+      setDocumentStore("similarities", []);
+    }
   },
 
   selectSegmentRange(startId: string, endId: string, append = false) {
