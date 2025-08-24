@@ -8,3 +8,4 @@ export { default as Row } from "./layout/Row";
 export { default as TextInput } from "./inputs/TextInput";
 export { default as SelectInput } from "./inputs/SelectInput";
 export { default as RangeInput } from "./inputs/RangeInput";
+export { default as LoadingSpinner } from "./LoadingSpinner";

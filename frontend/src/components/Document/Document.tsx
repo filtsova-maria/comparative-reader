@@ -1,5 +1,5 @@
 import { Component, createEffect, Show } from "solid-js";
-import { Col } from "..";
+import { Col, LoadingSpinner } from "..";
 import UploadInput from "./UploadInput";
 import Toolbar from "./Toolbar";
 import Content from "./Content";
@@ -42,7 +42,12 @@ const Document: Component<IProps> = (props) => {
           handleFileChange={handleFileChange}
           type={props.type}
         />
-        <Content type={props.type} readonly={props.readonly} />
+        <Show
+          when={!documentStore[props.type].loading}
+          fallback={<LoadingSpinner text="Processing text..." />}
+        >
+          <Content type={props.type} readonly={props.readonly} />
+        </Show>
       </Col>
     </Show>
   );

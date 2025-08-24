@@ -19,6 +19,7 @@ export interface DocumentState {
   searchTerm: string;
   searchResults: string[];
   currentSearchOccurrence: number;
+  loading: boolean;
 }
 
 type SimilarityEntry = [number, number]; // [segmentIndex, similarity]
@@ -60,6 +61,7 @@ const initialState: DocumentState = {
   searchTerm: "",
   searchResults: [],
   currentSearchOccurrence: 0,
+  loading: false,
 };
 
 const [documentStore, setDocumentStore] = createStore<DocumentStore>({
@@ -240,13 +242,20 @@ const [documentStore, setDocumentStore] = createStore<DocumentStore>({
   },
 
   async uploadSegments(type) {
+    setDocumentStore(type, "loading", true);
     const segments = splitIntoSentences(this[type].content);
 
-    const result = (await apiPost("/upload-segments", {
-      type,
-      segments,
-    })) as UploadSegmentsResponse;
-    console.log(`Uploaded ${type} segments:`, result);
+    try {
+      const result = (await apiPost("/upload-segments", {
+        type,
+        segments,
+      })) as UploadSegmentsResponse;
+      console.log(`Uploaded ${type} segments:`, result);
+    } catch (error) {
+      console.error("Error uploading segments:", error);
+    } finally {
+      setDocumentStore(type, "loading", false);
+    }
   },
 
   async computeSimilarity() {
