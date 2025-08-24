@@ -33,15 +33,18 @@ class SimilarityRequest(BaseModel):
 
 @app.post("/upload-segments")
 def upload_segments(payload: SegmentsPayload):
+    print(f"Received {payload.type} segments: {len(payload.segments)} segments")
     embeddings = model.encode(payload.segments, convert_to_tensor=True)
     store[payload.type]["embeddings"] = embeddings
     # TODO: add logger
     # TODO: consider using a vector database for storing embeddings
-    print(f"Uploaded {payload.type} segments: {len(payload.segments)} segments")
+    print(f"Processed {payload.type} segments: {len(payload.segments)} segments")
     return {"status": "ok", "count": len(payload.segments)}
 
 
 # TODO: test similarity computation and embedding correspondence to segments
+# TODO: consider recomputing embeds instead of taking mean
+# FIXME: I have a feeling that swapping doesn't work correctly
 @app.post("/compute-similarity")
 def compute_similarity(req: SimilarityRequest):
     if store["source"]["embeddings"] is None or store["target"]["embeddings"] is None:

@@ -6,8 +6,8 @@ import { useDocumentStore } from "../store/DocumentStore";
 interface IProps {}
 
 const BottomToolbar: Component<IProps> = () => {
-  const [sensitivity, setSensitivity] = createSignal<number>(50);
-  const { setDocumentStore } = useDocumentStore();
+  const [sensitivity, setSensitivity] = createSignal<number>(0.5);
+  const { documentStore } = useDocumentStore();
 
   return (
     <div class="w-full flex p-4 gap-4">
@@ -15,17 +15,17 @@ const BottomToolbar: Component<IProps> = () => {
         <RangeInput
           label="Sensitivity:"
           min={0}
-          max={100}
-          step={10}
+          max={1}
+          step={0.1}
           value={sensitivity()}
           onInput={(e) => {
             setSensitivity(Number(e.currentTarget.value));
           }}
           onChange={(e) => {
-            setDocumentStore("sensitivity", Number(e.currentTarget.value));
+            documentStore.setSensitivity(Number(e.currentTarget.value));
           }}
         />
-        <Label>{sensitivity()} %</Label>
+        <Label>{sensitivity() * 100} %</Label>
       </Row>
       <SelectInput
         label="Mode:"
@@ -38,14 +38,23 @@ const BottomToolbar: Component<IProps> = () => {
         <Label>Occurrences:</Label>
         <IconButton
           icon={BsChevronLeft}
+          disabled={
+            documentStore.similarities.length === 0 ||
+            documentStore.currentSimilarityOccurrence === 0
+          }
           onClick={() => {
-            // TODO: implement scroll jump to previous similarity occurrence
+            documentStore.setCurrentSimilarityOccurrence("previous");
           }}
         />
         <IconButton
           icon={BsChevronRight}
+          disabled={
+            documentStore.similarities.length === 0 ||
+            documentStore.currentSimilarityOccurrence ===
+              documentStore.getVisibleSimilarities().length - 1
+          }
           onClick={() => {
-            // TODO: implement scroll jump to next similarity occurrence
+            documentStore.setCurrentSimilarityOccurrence("next");
           }}
         />
       </Row>

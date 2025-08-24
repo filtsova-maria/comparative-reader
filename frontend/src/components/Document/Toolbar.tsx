@@ -34,7 +34,7 @@ const Toolbar: Component<IProps> = (props) => {
       <Row>
         {documentStore[props.type].searchResults.length > 0 && (
           <Label className="text-sm">
-            {documentStore[props.type].currentOccurrence + 1}/
+            {documentStore[props.type].currentSearchOccurrence + 1}/
             {documentStore[props.type].searchResults.length}
           </Label>
         )}
@@ -51,21 +51,21 @@ const Toolbar: Component<IProps> = (props) => {
           icon={BsChevronLeft}
           disabled={
             documentStore[props.type].searchResults.length === 0 ||
-            documentStore[props.type].currentOccurrence === 0
+            documentStore[props.type].currentSearchOccurrence === 0
           }
           onClick={() => {
-            documentStore.setCurrentOccurrence(props.type, "previous");
+            documentStore.setCurrentSearchOccurrence(props.type, "previous");
           }}
         />
         <IconButton
           icon={BsChevronRight}
           disabled={
             documentStore[props.type].searchResults.length === 0 ||
-            documentStore[props.type].currentOccurrence >=
+            documentStore[props.type].currentSearchOccurrence >=
               documentStore[props.type].searchResults.length - 1
           }
           onClick={() => {
-            documentStore.setCurrentOccurrence(props.type, "next");
+            documentStore.setCurrentSearchOccurrence(props.type, "next");
           }}
         />
       </Row>

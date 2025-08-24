@@ -6,43 +6,41 @@ import {
   scrollToSegment,
   splitIntoSentences,
 } from "../components/Document/utils";
-
-const API_URL = "http://localhost:8000";
-
-async function apiPost(path: string, body: any) {
-  const res = await fetch(`${API_URL}${path}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    // TODO: consider adding a logger
-    throw new Error(`API request failed with status ${res.status}`);
-  }
-  return res.json();
-}
+import {
+  apiPost,
+  ComputeSimilarityResponse,
+  SwapDocumentsResponse,
+  UploadSegmentsResponse,
+} from "./api";
 
 export interface DocumentState {
   file: File | null;
   content: string;
   searchTerm: string;
   searchResults: string[];
-  currentOccurrence: number;
+  currentSearchOccurrence: number;
 }
 
+type SimilarityEntry = [number, number]; // [segmentIndex, similarity]
+
+// TODO: search can be slow on large documents, consider debouncing
+// TODO: refactor store into something more manageable
 export interface DocumentStore {
   source: DocumentState;
   target: DocumentState;
   selectedSegments: string[];
-  similarities: number[];
-sensitivity: number;
+  similarities: SimilarityEntry[];
+  sensitivity: number; // 0-1
+  setSensitivity: (value: number) => void;
+  currentSimilarityOccurrence: number;
   setFile: (type: TDocumentType, file: File | null) => Promise<void>;
   updateContent: (type: TDocumentType) => Promise<void>;
   setSearchTerm: (type: TDocumentType, term: string) => void;
-  setCurrentOccurrence: (
+  setCurrentSearchOccurrence: (
     type: TDocumentType,
     direction: "next" | "previous",
   ) => void;
+  setCurrentSimilarityOccurrence: (direction: "next" | "previous") => void;
   toggleSegmentSelection: (segmentId: string) => void;
   clearSelection: () => void;
   selectSegmentRange: (
@@ -52,6 +50,7 @@ sensitivity: number;
   ) => void;
   uploadSegments: (type: TDocumentType) => Promise<void>;
   computeSimilarity: () => Promise<void>;
+  getVisibleSimilarities: () => SimilarityEntry[];
   swapDocuments: () => Promise<void>;
 }
 
@@ -60,7 +59,7 @@ const initialState: DocumentState = {
   content: "",
   searchTerm: "",
   searchResults: [],
-  currentOccurrence: 0,
+  currentSearchOccurrence: 0,
 };
 
 const [documentStore, setDocumentStore] = createStore<DocumentStore>({
@@ -68,15 +67,25 @@ const [documentStore, setDocumentStore] = createStore<DocumentStore>({
   target: { ...initialState },
   selectedSegments: [],
   similarities: [],
-sensitivity: 50,
+  sensitivity: 0.5,
+  currentSimilarityOccurrence: 0,
+
+  setSensitivity(value) {
+    setDocumentStore("sensitivity", value);
+    setDocumentStore("currentSimilarityOccurrence", 0);
+    const firstVisibleSegment = this.getVisibleSimilarities()[0][0];
+    if (firstVisibleSegment !== undefined) {
+      scrollToSegment(getSegmentIdByIndex("target", firstVisibleSegment));
+    }
+  },
 
   async setFile(type, file) {
     setDocumentStore(type, "file", file);
-    await documentStore.updateContent(type);
+    await this.updateContent(type);
     setDocumentStore(type, {
       searchTerm: "",
       searchResults: [],
-      currentOccurrence: 0,
+      currentSearchOccurrence: 0,
     });
     this.clearSelection();
     // Manually clear the search input fields
@@ -87,7 +96,7 @@ sensitivity: 50,
   },
 
   async updateContent(type) {
-    const file = documentStore[type].file;
+    const file = this[type].file;
     if (file) {
       const reader = new FileReader();
       return new Promise((resolve) => {
@@ -108,12 +117,12 @@ sensitivity: 50,
     if (term === "") {
       setDocumentStore(type, {
         searchResults: [],
-        currentOccurrence: 0,
+        currentSearchOccurrence: 0,
       });
       return;
     }
 
-    const content = documentStore[type].content.toLowerCase();
+    const content = this[type].content.toLowerCase();
     const matches = content
       .split("\n")
       .map((line, index) => (line.includes(term.toLowerCase()) ? index : -1))
@@ -122,24 +131,28 @@ sensitivity: 50,
     const searchResults = matches.map((index) =>
       getSegmentIdByIndex(type, index),
     );
-    const currentOccurrence = 0;
+    const currentSearchOccurrence = 0;
     setDocumentStore(type, {
       searchResults,
-      currentOccurrence,
+      currentSearchOccurrence,
     });
-    scrollToSegment(searchResults[currentOccurrence]);
+    scrollToSegment(searchResults[currentSearchOccurrence]);
   },
 
-  setCurrentOccurrence(type: TDocumentType, direction: "next" | "previous") {
-    setDocumentStore((prev) => {
-      const current = prev[type].currentOccurrence;
-      const results = prev[type].searchResults;
+  setCurrentSearchOccurrence(
+    type: TDocumentType,
+    direction: "next" | "previous",
+  ) {
+    setDocumentStore(type, (prev) => {
+      const current = prev.currentSearchOccurrence;
+      const results = prev.searchResults;
       if (direction === "next") {
         if (current < results.length - 1) {
           const next = current + 1;
           scrollToSegment(results[next]);
           return {
-            [type]: { ...prev[type], currentOccurrence: next },
+            ...prev,
+            currentSearchOccurrence: next,
           };
         }
       } else if (direction === "previous") {
@@ -147,8 +160,38 @@ sensitivity: 50,
           const next = current - 1;
           scrollToSegment(results[next]);
           return {
-            [type]: { ...prev[type], currentOccurrence: next },
+            ...prev,
+            currentSearchOccurrence: next,
           };
+        }
+      }
+      return prev;
+    });
+  },
+
+  setCurrentSimilarityOccurrence(direction: "next" | "previous") {
+    setDocumentStore((prev) => {
+      const current = prev.currentSimilarityOccurrence;
+      const visibleSegmentIndexes = this.getVisibleSimilarities();
+      if (direction === "next") {
+        if (current < visibleSegmentIndexes.length - 1) {
+          const next = current + 1;
+          const segmentId = getSegmentIdByIndex(
+            "target",
+            visibleSegmentIndexes[next][0],
+          );
+          scrollToSegment(segmentId);
+          return { currentSimilarityOccurrence: next };
+        }
+      } else if (direction === "previous") {
+        if (current > 0) {
+          const next = current - 1;
+          const segmentId = getSegmentIdByIndex(
+            "target",
+            visibleSegmentIndexes[next][0],
+          );
+          scrollToSegment(segmentId);
+          return { currentSimilarityOccurrence: next };
         }
       }
       return prev;
@@ -163,7 +206,7 @@ sensitivity: 50,
           ? segments.filter((id) => id !== segmentId) // Unselect if already selected
           : [...segments, segmentId], // Add to selection if not selected
     );
-    if (documentStore.selectedSegments.length === 0) {
+    if (this.selectedSegments.length === 0) {
       setDocumentStore("similarities", []);
     }
   },
@@ -193,38 +236,58 @@ sensitivity: 50,
   clearSelection() {
     setDocumentStore("selectedSegments", []);
     setDocumentStore("similarities", []);
+    setDocumentStore("currentSimilarityOccurrence", 0);
   },
 
   async uploadSegments(type) {
-    const segments = splitIntoSentences(documentStore[type].content);
+    const segments = splitIntoSentences(this[type].content);
 
-    const result = await apiPost("/upload-segments", { type, segments });
+    const result = (await apiPost("/upload-segments", {
+      type,
+      segments,
+    })) as UploadSegmentsResponse;
     console.log(`Uploaded ${type} segments:`, result);
   },
 
   async computeSimilarity() {
-    const selectedIndexes = documentStore.selectedSegments.map((id) => {
+    const selectedIndexes = this.selectedSegments.map((id) => {
       return getSegmentIndexById(id);
     });
 
-    const result = await apiPost("/compute-similarity", {
+    const result = (await apiPost("/compute-similarity", {
       selected_ids: selectedIndexes,
-    });
+    })) as ComputeSimilarityResponse;
 
-    console.log("Computed similarities:", result);
-
+    // Map segment IDs to their similarity scores
+    const { similarities, target_segment_ids } = result;
     if (result.similarities) {
-      setDocumentStore("similarities", result.similarities);
+      const similarityTuples: SimilarityEntry[] = [];
+      target_segment_ids.forEach((id, index) => {
+        similarityTuples.push([id, similarities[index]]);
+      });
+      setDocumentStore("similarities", similarityTuples);
+      const firstVisibleId = this.getVisibleSimilarities()[0][0];
+      if (firstVisibleId !== undefined) {
+        scrollToSegment(getSegmentIdByIndex("target", firstVisibleId));
+      }
     }
   },
 
+  getVisibleSimilarities() {
+    return this.similarities.filter(
+      ([_, similarity]) => similarity >= this.sensitivity,
+    );
+  },
+
   async swapDocuments() {
-    const result = await apiPost("/swap-documents", {});
+    const result = (await apiPost(
+      "/swap-documents",
+      {},
+    )) as SwapDocumentsResponse;
     console.log(result);
 
-    // Swap in frontend state too
-    const oldSource = { ...documentStore.source };
-    setDocumentStore("source", documentStore.target);
+    const oldSource = { ...this.source };
+    setDocumentStore("source", this.target);
     setDocumentStore("target", oldSource);
   },
 });
