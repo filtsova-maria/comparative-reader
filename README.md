@@ -27,3 +27,63 @@ The project is a UI concept designed to enable comparative reading of documents,
   - **Similarity Engine**: Provides similarity models.
   - **API Endpoints**: Handles frontend request, serves document data and similarity scores.
 
+## Installation
+
+You need [yarn](https://classic.yarnpkg.com/lang/en/docs/install/) to install and run the frontend part of the application and [python3](https://www.python.org/downloads/) for the backend.
+
+### Frontend
+
+1. **Navigate to the frontend directory**:
+  ```bash
+  cd frontend
+  ```
+
+2. **Install dependencies**:
+  ```bash
+  yarn install
+  ```
+
+3. **Run the development server**:
+  ```bash
+  yarn dev
+  ```
+  Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+
+### Backend
+
+1. **Navigate to the backend directory**:
+  ```bash
+  cd backend
+  ```
+
+2. **Create a virtual environment**:
+  ```bash
+  python -m venv venv
+  ```
+
+3. **Activate the virtual environment**:
+  - On Windows:
+    ```bash
+    venv\Scripts\activate
+    ```
+  - On macOS/Linux:
+    ```bash
+    source venv/bin/activate
+    ```
+
+4. **Install dependencies**:
+  ```bash
+  pip install -r requirements.txt
+  ```
+
+5. **Run the backend server**:
+  ```bash
+  fastapi dev main.py
+  ```
+  The backend server will be running at [http://localhost:8000](http://localhost:8000). You can access API docs at [http://localhost:8000/docs](http://localhost:8000/docs).
+
+### Running the Full Application
+
+1. **Start the backend server** as described in the Backend section.
+2. **Start the frontend development server** as described in the Frontend section.
+3. Open [http://localhost:3000](http://localhost:3000) to use the application.
