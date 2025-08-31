@@ -1,18 +1,18 @@
 import { type Component } from "solid-js";
 import { BottomToolbar, Document, IconButton, Tooltip } from "./components";
 import { BsArrowLeftRight } from "solid-icons/bs";
-import { useDocumentStore } from "./store/DocumentStore";
+import { useDocumentStore } from "./store/context";
 // TODO: custom scrollbar component that highlights segments of interest, think about how to mark and access segments in the document
 // TODO: shortcuts for navigation, inputs and actions
 const App: Component = () => {
-  const { documentStore } = useDocumentStore();
+  const { source, target, selection, swapDocuments } = useDocumentStore();
 
   const bothFilesSelected = () =>
-    documentStore.source.file !== null && documentStore.target.file !== null;
+    source.state.file !== null && target.state.file !== null;
 
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
-      documentStore.clearSelection();
+      selection.clearSelection();
     }
   });
 
@@ -24,16 +24,11 @@ const App: Component = () => {
         } gap-2 h-screen items-center justify-items-center overflow-x-auto`}
       >
         <Document uploadPrompt="Upload a text document." type="source" />
-        {documentStore.source.file && documentStore.target.file && (
+        {source.state.file && target.state.file && (
           <Tooltip text="Swap documents">
             <IconButton
               icon={BsArrowLeftRight}
-              onClick={async () => {
-                const source = documentStore.source.file;
-                documentStore.setFile("source", documentStore.target.file);
-                documentStore.setFile("target", source);
-                await documentStore.swapDocuments();
-              }}
+              onClick={async () => await swapDocuments()}
             />
           </Tooltip>
         )}

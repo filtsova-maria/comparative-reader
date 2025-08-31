@@ -1,4 +1,5 @@
-import { DocumentStore, TDocumentType } from "../../store/DocumentStore";
+import { TDocumentType } from "../../store/document";
+import { RootStore } from "../../store/store";
 import { getSegmentIndexById } from "./utils";
 
 const styles = {
@@ -44,39 +45,45 @@ export const calculateSegmentHighlightStyle = (
 export const getSegmentStyle = (
   id: string,
   type: TDocumentType,
-  documentStore: DocumentStore,
+  store: RootStore,
 ): string => {
+  const {
+    selection: { state: selectionState },
+    source: { state: sourceState },
+    similarity: { state: similarityState, getVisibleSimilarities },
+    target: { state: targetState },
+  } = store;
+
   if (type === "source") {
-    if (documentStore.selectedSegments.includes(id)) {
+    if (selectionState.selectedSegments.includes(id)) {
       return styles.source.selectedSegment;
     }
-    if (documentStore.source.searchResults.includes(id)) {
-      return documentStore.source.currentSearchOccurrence ===
-        documentStore.source.searchResults.indexOf(id)
+    if (sourceState.searchResults.includes(id)) {
+      return sourceState.currentSearchOccurrence ===
+        sourceState.searchResults.indexOf(id)
         ? styles.common.searchCurrentSegment
         : styles.source.baseSegment;
     }
   } else {
     const segmentSimilarity =
-      documentStore.similarities[getSegmentIndexById(id)]?.[1];
-    // TODO: cache getVisibleSimilarities result
-    const visibleSimilarities = documentStore.getVisibleSimilarities();
+      similarityState.similarities[getSegmentIndexById(id)]?.[1];
+    const visibleSimilarities = getVisibleSimilarities();
     const currentSimilarityOccurrence =
-      visibleSimilarities[documentStore.currentSimilarityOccurrence];
+      visibleSimilarities[similarityState.currentSimilarityOccurrence];
     if (
       segmentSimilarity !== undefined &&
       currentSimilarityOccurrence !== undefined &&
       visibleSimilarities.length > 0 &&
-      segmentSimilarity >= documentStore.sensitivity
+      segmentSimilarity >= similarityState.sensitivity
     ) {
       const isHighlighted =
-        visibleSimilarities[documentStore.currentSimilarityOccurrence][0] ===
+        visibleSimilarities[similarityState.currentSimilarityOccurrence][0] ===
         getSegmentIndexById(id);
       return calculateSegmentHighlightStyle(segmentSimilarity, isHighlighted);
     }
-    if (documentStore.target.searchResults.includes(id)) {
-      return documentStore.target.currentSearchOccurrence ===
-        documentStore.target.searchResults.indexOf(id)
+    if (targetState.searchResults.includes(id)) {
+      return targetState.currentSearchOccurrence ===
+        targetState.searchResults.indexOf(id)
         ? styles.common.searchCurrentSegment
         : styles.target.baseSegment;
     }

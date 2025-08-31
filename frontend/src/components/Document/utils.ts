@@ -1,4 +1,4 @@
-import { TDocumentType } from "../../store/DocumentStore";
+import { TDocumentType } from "../../store/document";
 
 export const scrollToSegment = (id: string) => {
   document

@@ -3,7 +3,8 @@ import { Row, Label } from "..";
 import IconButton from "../IconButton";
 import { BsChevronLeft, BsChevronRight, BsUpload } from "solid-icons/bs";
 import TextInput from "../inputs/TextInput";
-import { TDocumentType, useDocumentStore } from "../../store/DocumentStore";
+import { TDocumentType } from "../../store/document";
+import { useDocumentStore } from "../../store/context";
 
 interface IProps {
   fileName: string;
@@ -12,7 +13,8 @@ interface IProps {
 }
 
 const Toolbar: Component<IProps> = (props) => {
-  const { documentStore } = useDocumentStore();
+  const store = useDocumentStore();
+  const doc = props.type === "source" ? store.source : store.target;
 
   return (
     <Row className="justify-between mb-2 m-[2px]">
@@ -32,40 +34,40 @@ const Toolbar: Component<IProps> = (props) => {
         </Label>
       </Row>
       <Row>
-        {documentStore[props.type].searchResults.length > 0 && (
+        {doc.state.searchResults.length > 0 && (
           <Label className="text-sm">
-            {documentStore[props.type].currentSearchOccurrence + 1}/
-            {documentStore[props.type].searchResults.length}
+            {doc.state.currentSearchOccurrence + 1}/
+            {doc.state.searchResults.length}
           </Label>
         )}
         <TextInput
           type="text"
           placeholder="Search..."
           onInput={(e) => {
-            documentStore.setSearchTerm(props.type, e.currentTarget.value);
+            doc.setSearchTerm(e.currentTarget.value);
           }}
-          value={documentStore[props.type].searchTerm}
+          value={doc.state.searchTerm}
           id={`${props.type}-search-input`}
         />
         <IconButton
           icon={BsChevronLeft}
           disabled={
-            documentStore[props.type].searchResults.length === 0 ||
-            documentStore[props.type].currentSearchOccurrence === 0
+            doc.state.searchResults.length === 0 ||
+            doc.state.currentSearchOccurrence === 0
           }
           onClick={() => {
-            documentStore.setCurrentSearchOccurrence(props.type, "previous");
+            doc.setCurrentSearchOccurrence("previous");
           }}
         />
         <IconButton
           icon={BsChevronRight}
           disabled={
-            documentStore[props.type].searchResults.length === 0 ||
-            documentStore[props.type].currentSearchOccurrence >=
-              documentStore[props.type].searchResults.length - 1
+            doc.state.searchResults.length === 0 ||
+            doc.state.currentSearchOccurrence >=
+              doc.state.searchResults.length - 1
           }
           onClick={() => {
-            documentStore.setCurrentSearchOccurrence(props.type, "next");
+            doc.setCurrentSearchOccurrence("next");
           }}
         />
       </Row>

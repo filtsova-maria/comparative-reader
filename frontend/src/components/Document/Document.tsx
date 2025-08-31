@@ -3,7 +3,8 @@ import { Col, LoadingSpinner } from "..";
 import UploadInput from "./UploadInput";
 import Toolbar from "./Toolbar";
 import Content from "./Content";
-import { TDocumentType, useDocumentStore } from "../../store/DocumentStore";
+import { TDocumentType } from "../../store/document";
+import { useDocumentStore } from "../../store/context";
 
 interface IProps {
   uploadPrompt: string;
@@ -12,22 +13,25 @@ interface IProps {
 }
 
 const Document: Component<IProps> = (props) => {
-  const { documentStore } = useDocumentStore();
+  const store = useDocumentStore();
+  const doc = props.type === "source" ? store.source : store.target;
 
   createEffect(() => {
-    documentStore.updateContent(props.type);
+    if (doc.state.file) {
+      doc.setFile(doc.state.file);
+    }
   });
 
   async function handleFileChange(e: Event) {
     const input = e.target as HTMLInputElement;
     const file = input.files?.[0] ?? null;
-    await documentStore.setFile(props.type, file);
-    await documentStore.uploadSegments(props.type);
+    await doc.setFile(file);
+    await doc.uploadSegments();
   }
 
   return (
     <Show
-      when={documentStore[props.type].file !== null}
+      when={doc.state.file !== null}
       fallback={
         <UploadInput
           type={props.type}
@@ -38,12 +42,12 @@ const Document: Component<IProps> = (props) => {
     >
       <Col className="overflow-y-hidden items-stretch h-full w-full">
         <Toolbar
-          fileName={documentStore[props.type].file?.name ?? "No file selected"}
+          fileName={doc.state.file?.name ?? "No file selected"}
           handleFileChange={handleFileChange}
           type={props.type}
         />
         <Show
-          when={!documentStore[props.type].loading}
+          when={!doc.state.loading}
           fallback={<LoadingSpinner text="Processing text..." />}
         >
           <Content type={props.type} readonly={props.readonly} />

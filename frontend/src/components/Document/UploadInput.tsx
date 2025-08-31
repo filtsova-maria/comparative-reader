@@ -1,6 +1,6 @@
 import { BsUpload } from "solid-icons/bs";
 import { Component } from "solid-js";
-import { TDocumentType } from "../../store/DocumentStore";
+import { TDocumentType } from "../../store/document";
 
 interface IProps {
   type: TDocumentType;

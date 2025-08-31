@@ -1,9 +1,10 @@
 import { Component, For, Show } from "solid-js";
 import { getSegmentIdByIndex, splitIntoSentences } from "./utils";
 import { Row } from "..";
-import { TDocumentType, useDocumentStore } from "../../store/DocumentStore";
 import { createKeyHold } from "@solid-primitives/keyboard";
 import { getSegmentStyle } from "./styles";
+import { useDocumentStore } from "../../store/context";
+import { TDocumentType } from "../../store/document";
 
 interface IProps {
   type: TDocumentType;
@@ -11,23 +12,24 @@ interface IProps {
 }
 
 const Content: Component<IProps> = (props) => {
-  const { documentStore } = useDocumentStore();
+  const store = useDocumentStore();
+  const doc = props.type === "source" ? store.source : store.target;
+
   let isSelecting = false;
   let startSegmentId: string | null = null;
   const ctrlKeyPressed = createKeyHold("Control");
 
   // TODO: align similarities with segment IDs to display them on the scroll bar
-  // TODO: debug highlighting when sensitivity is changed
 
   const handleMouseDown = (segmentId: string) => {
     isSelecting = true;
     startSegmentId = segmentId;
-    documentStore.toggleSegmentSelection(segmentId);
+    store.selection.toggleSegmentSelection(segmentId);
   };
 
   const handleMouseOver = (segmentId: string) => {
     if (isSelecting && startSegmentId) {
-      documentStore.selectSegmentRange(
+      store.selection.selectSegmentRange(
         startSegmentId,
         segmentId,
         ctrlKeyPressed(),
@@ -38,12 +40,14 @@ const Content: Component<IProps> = (props) => {
   const handleMouseUp = async () => {
     isSelecting = false;
     startSegmentId = null;
-    if (documentStore.selectedSegments.length === 0) return;
-    await documentStore.computeSimilarity();
+    if (store.selection.state.selectedSegments.length === 0) return;
+    await store.similarity.computeSimilarity(
+      store.selection.state.selectedSegments,
+    );
   };
 
   const highlightSentence = (s: string) => {
-    const searchTerm = documentStore[props.type].searchTerm;
+    const searchTerm = doc.state.searchTerm;
     if (!searchTerm) return s;
 
     const parts = s.split(new RegExp(`(${searchTerm})`, "gi"));
@@ -63,13 +67,13 @@ const Content: Component<IProps> = (props) => {
         class="overflow-scroll w-full border border-gray-300 flex-grow bg-white shadow-md"
         onMouseUp={props.type === "source" ? handleMouseUp : undefined}
       >
-        <For each={splitIntoSentences(documentStore[props.type].content)}>
+        <For each={splitIntoSentences(doc.state.content)}>
           {(sentence, idx) => {
             const segmentId = getSegmentIdByIndex(props.type, idx());
 
             return (
               <a
-                class={`block border-b border-gray-300 p-1 w-full ${getSegmentStyle(segmentId, props.type, documentStore)}`}
+                class={`block border-b border-gray-300 p-1 w-full ${getSegmentStyle(segmentId, props.type, store)}`}
                 id={segmentId}
                 onMouseDown={
                   props.type === "source"
@@ -90,7 +94,7 @@ const Content: Component<IProps> = (props) => {
       </div>
       <Show when={props.type === "target"}>
         <div class="bg-gray-200 h-svh w-6">
-          {documentStore.similarities.map(([index, value]) => (
+          {store.similarity.state.similarities.map(([index, value]) => (
             <div>
               {index}: {value}
             </div>
