@@ -53,9 +53,10 @@ const Content: Component<IProps> = (props) => {
     }
   };
 
-  const handleMouseUp = () => {
+  const handleMouseUp = async () => {
     isSelecting = false;
     startSegmentId = null;
+    await documentStore.computeSimilarity();
   };
 
   const highlightSentence = (s: string) => {

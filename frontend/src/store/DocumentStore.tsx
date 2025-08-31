@@ -4,7 +4,23 @@ import {
   getSegmentIdByIndex,
   getSegmentIndexById,
   scrollToSegment,
+  splitIntoSentences,
 } from "../components/Document/utils";
+
+const API_URL = "http://localhost:8000";
+
+async function apiPost(path: string, body: any) {
+  const res = await fetch(`${API_URL}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    // TODO: consider adding a logger
+    throw new Error(`API request failed with status ${res.status}`);
+  }
+  return res.json();
+}
 
 export interface DocumentState {
   file: File | null;
@@ -13,17 +29,19 @@ export interface DocumentState {
   searchResults: string[];
   currentOccurrence: number;
 }
+
 export interface DocumentStore {
   source: DocumentState;
   target: DocumentState;
-  setFile: (type: TDocumentType, file: File | null) => void;
-  updateContent: (type: TDocumentType) => void;
+  selectedSegments: string[];
+  similarities: number[];
+  setFile: (type: TDocumentType, file: File | null) => Promise<void>;
+  updateContent: (type: TDocumentType) => Promise<void>;
   setSearchTerm: (type: TDocumentType, term: string) => void;
   setCurrentOccurrence: (
     type: TDocumentType,
     direction: "next" | "previous",
   ) => void;
-  selectedSegments: string[];
   toggleSegmentSelection: (segmentId: string) => void;
   clearSelection: () => void;
   selectSegmentRange: (
@@ -31,6 +49,9 @@ export interface DocumentStore {
     endId: string,
     append?: boolean,
   ) => void;
+  uploadSegments: (type: TDocumentType) => Promise<void>;
+  computeSimilarity: () => Promise<void>;
+  swapDocuments: () => Promise<void>;
 }
 
 const initialState: DocumentState = {
@@ -44,10 +65,12 @@ const initialState: DocumentState = {
 const [documentStore, setDocumentStore] = createStore<DocumentStore>({
   source: { ...initialState },
   target: { ...initialState },
+  selectedSegments: [],
+  similarities: [],
 
-  setFile(type, file) {
+  async setFile(type, file) {
     setDocumentStore(type, "file", file);
-    documentStore.updateContent(type);
+    await documentStore.updateContent(type);
     setDocumentStore(type, {
       searchTerm: "",
       searchResults: [],
@@ -61,16 +84,20 @@ const [documentStore, setDocumentStore] = createStore<DocumentStore>({
     });
   },
 
-  updateContent(type) {
+  async updateContent(type) {
     const file = documentStore[type].file;
     if (file) {
       const reader = new FileReader();
-      reader.onload = () => {
-        setDocumentStore(type, "content", reader.result as string);
-      };
-      reader.readAsText(file);
+      return new Promise((resolve) => {
+        reader.onload = () => {
+          setDocumentStore(type, "content", reader.result as string);
+          resolve();
+        };
+        reader.readAsText(file);
+      });
     } else {
       setDocumentStore(type, "content", "");
+      return Promise.resolve();
     }
   },
 
@@ -126,8 +153,6 @@ const [documentStore, setDocumentStore] = createStore<DocumentStore>({
     });
   },
 
-  selectedSegments: [],
-
   toggleSegmentSelection(segmentId: string) {
     setDocumentStore(
       "selectedSegments",
@@ -162,6 +187,39 @@ const [documentStore, setDocumentStore] = createStore<DocumentStore>({
 
   clearSelection() {
     setDocumentStore("selectedSegments", []);
+  },
+
+  async uploadSegments(type) {
+    const segments = splitIntoSentences(documentStore[type].content);
+
+    const result = await apiPost("/upload-segments", { type, segments });
+    console.log(`Uploaded ${type} segments:`, result);
+  },
+
+  async computeSimilarity() {
+    const selectedIndexes = documentStore.selectedSegments.map((id) => {
+      return getSegmentIndexById(id);
+    });
+
+    const result = await apiPost("/compute-similarity", {
+      selected_ids: selectedIndexes,
+    });
+
+    console.log("Computed similarities:", result);
+
+    if (result.similarities) {
+      setDocumentStore("similarities", result.similarities);
+    }
+  },
+
+  async swapDocuments() {
+    const result = await apiPost("/swap-documents", {});
+    console.log(result);
+
+    // Swap in frontend state too
+    const oldSource = { ...documentStore.source };
+    setDocumentStore("source", documentStore.target);
+    setDocumentStore("target", oldSource);
   },
 });
 

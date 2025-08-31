@@ -28,10 +28,11 @@ const App: Component = () => {
           <Tooltip text="Swap documents">
             <IconButton
               icon={BsArrowLeftRight}
-              onClick={() => {
+              onClick={async () => {
                 const source = documentStore.source.file;
                 documentStore.setFile("source", documentStore.target.file);
                 documentStore.setFile("target", source);
+                await documentStore.swapDocuments();
               }}
             />
           </Tooltip>
