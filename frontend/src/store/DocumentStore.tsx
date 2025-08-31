@@ -34,6 +34,7 @@ export interface DocumentStore {
   sensitivity: number; // 0-1
   setSensitivity: (value: number) => void;
   currentSimilarityOccurrence: number;
+  sortedSimilarities: SimilarityEntry[];
   setFile: (type: TDocumentType, file: File | null) => Promise<void>;
   updateContent: (type: TDocumentType) => Promise<void>;
   setSearchTerm: (type: TDocumentType, term: string) => void;
@@ -69,13 +70,15 @@ const [documentStore, setDocumentStore] = createStore<DocumentStore>({
   target: { ...initialState },
   selectedSegments: [],
   similarities: [],
+  sortedSimilarities: [],
   sensitivity: 0.5,
   currentSimilarityOccurrence: 0,
 
   setSensitivity(value) {
     setDocumentStore("sensitivity", value);
     setDocumentStore("currentSimilarityOccurrence", 0);
-    const firstVisibleSegment = this.getVisibleSimilarities()[0][0];
+    // FIXME: gets called after styles are applied causing an error
+    const firstVisibleSegment = this.getVisibleSimilarities()?.[0][0];
     if (firstVisibleSegment !== undefined) {
       scrollToSegment(getSegmentIdByIndex("target", firstVisibleSegment));
     }
@@ -269,12 +272,18 @@ const [documentStore, setDocumentStore] = createStore<DocumentStore>({
 
     // Map segment IDs to their similarity scores
     const { similarities, target_segment_ids } = result;
-    if (result.similarities) {
+    if (similarities) {
       const similarityTuples: SimilarityEntry[] = [];
-      target_segment_ids.forEach((id, index) => {
-        similarityTuples.push([id, similarities[index]]);
+      for (let i = 0; i < similarities.length; i++) {
+        similarityTuples.push([i, result.similarities[i]]);
+      }
+      const sortedSimilarityTuples: SimilarityEntry[] = [];
+      target_segment_ids.forEach((id) => {
+        sortedSimilarityTuples.push([id, similarities[id]]);
       });
+      setDocumentStore("sortedSimilarities", sortedSimilarityTuples);
       setDocumentStore("similarities", similarityTuples);
+      setDocumentStore("currentSimilarityOccurrence", 0);
       const firstVisibleId = this.getVisibleSimilarities()[0][0];
       if (firstVisibleId !== undefined) {
         scrollToSegment(getSegmentIdByIndex("target", firstVisibleId));
@@ -283,9 +292,14 @@ const [documentStore, setDocumentStore] = createStore<DocumentStore>({
   },
 
   getVisibleSimilarities() {
-    return this.similarities.filter(
-      ([_, similarity]) => similarity >= this.sensitivity,
-    );
+    const visibleSimilarities: SimilarityEntry[] = [];
+    for (const entry of this.sortedSimilarities) {
+      if (entry[1] < this.sensitivity) {
+        break; // Since similarity coefficients are sorted, we can break early
+      }
+      visibleSimilarities.push(entry);
+    }
+    return visibleSimilarities;
   },
 
   async swapDocuments() {

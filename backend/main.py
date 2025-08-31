@@ -64,14 +64,12 @@ def compute_similarity(req: SimilarityRequest):
     # Normalize to [0, 1]
     min_val, max_val = sims.min(), sims.max()
     norm_sims = (sims - min_val) / (max_val - min_val) if max_val > min_val else sims
-
     # Get target segment IDs sorted by similarity (descending order)
     target_segment_ids = torch.argsort(norm_sims, descending=True).tolist()
-
     print(f"Computed similarities for {len(req.selected_ids)} segments")
     return {
-        "similarities": norm_sims.tolist(),
-        "target_segment_ids": target_segment_ids,
+        "similarities": norm_sims.tolist(),  # similarities for each target segment in original order
+        "target_segment_ids": target_segment_ids,  # target segment IDs sorted by similarity (descending)
     }
 
 

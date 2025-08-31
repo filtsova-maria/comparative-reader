@@ -1,45 +1,9 @@
 import { Component, For, Show } from "solid-js";
-import {
-  getSegmentIdByIndex,
-  getSegmentIndexById,
-  splitIntoSentences,
-} from "./utils";
+import { getSegmentIdByIndex, splitIntoSentences } from "./utils";
 import { Row } from "..";
 import { TDocumentType, useDocumentStore } from "../../store/DocumentStore";
 import { createKeyHold } from "@solid-primitives/keyboard";
-
-// TODO: extract styles
-const styles = {
-  activeSegmentColors: "bg-cyan-100 hover:bg-cyan-200",
-  inactiveSegmentColors: "bg-white hover:bg-gray-200",
-  readonlySegmentColors: "bg-white",
-  foundCurrentSegmentColors: "bg-gray-200",
-  similarityCurrentSegmentColors: "font-bold",
-};
-const similarityShades = [
-  "bg-highlight-1",
-  "bg-highlight-2",
-  "bg-highlight-3",
-  "bg-highlight-4",
-  "bg-highlight-5",
-];
-
-/**
- * Calculates segment color intensity based on similarity.
- * @param similarity from 0 to 1
- * @param sensitivity from 0 to 100
- * @returns CSS class for segment background color
- */
-const calculateSegmentHighlightStyle = (
-  similarity: number,
-  isHighlighted: boolean,
-): string => {
-  const index = Math.min(
-    Math.ceil(similarity * similarityShades.length) - 1,
-    similarityShades.length - 1,
-  );
-  return similarityShades[index] + (isHighlighted ? " font-bold" : "");
-};
+import { getSegmentStyle } from "./styles";
 
 interface IProps {
   type: TDocumentType;
@@ -53,34 +17,7 @@ const Content: Component<IProps> = (props) => {
   const ctrlKeyPressed = createKeyHold("Control");
 
   // TODO: align similarities with segment IDs to display them on the scroll bar
-  // TODO: refactor styles function and probably extract it
-  const getSegmentStyle = (id: string): string => {
-    if (documentStore.selectedSegments.includes(id)) {
-      return styles.activeSegmentColors;
-    }
-    const segmentSimilarity =
-      documentStore.similarities[getSegmentIndexById(id)]?.[1];
-    if (
-      props.type === "target" &&
-      segmentSimilarity !== undefined &&
-      segmentSimilarity >= documentStore.sensitivity
-    ) {
-      const isHighlighted =
-        documentStore.getVisibleSimilarities()[
-          documentStore.currentSimilarityOccurrence
-        ][0] === getSegmentIndexById(id);
-      return calculateSegmentHighlightStyle(segmentSimilarity, isHighlighted);
-    }
-    if (documentStore[props.type].searchResults.includes(id)) {
-      return documentStore[props.type].currentSearchOccurrence ===
-        documentStore[props.type].searchResults.indexOf(id)
-        ? styles.foundCurrentSegmentColors
-        : styles.inactiveSegmentColors;
-    }
-    return props.readonly
-      ? styles.readonlySegmentColors
-      : styles.inactiveSegmentColors;
-  };
+  // TODO: debug highlighting when sensitivity is changed
 
   const handleMouseDown = (segmentId: string) => {
     isSelecting = true;
@@ -132,7 +69,7 @@ const Content: Component<IProps> = (props) => {
 
             return (
               <a
-                class={`block border-b border-gray-300 p-1 w-full ${getSegmentStyle(segmentId)}`}
+                class={`block border-b border-gray-300 p-1 w-full ${getSegmentStyle(segmentId, props.type, documentStore)}`}
                 id={segmentId}
                 onMouseDown={
                   props.type === "source"

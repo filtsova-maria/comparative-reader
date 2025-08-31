@@ -7,7 +7,7 @@ export interface UploadSegmentsResponse {
 // /compute-similarity
 export interface ComputeSimilarityResponse {
   similarities: number[]; // Array of similarity scores
-  target_segment_ids: number[]; // Array of target segment IDs sorted by similarity
+  target_segment_ids: number[]; // Array that indexes segments sorted by similarity
 }
 
 // /swap-documents
