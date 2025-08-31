@@ -1,6 +1,6 @@
 import { createEffect, createSignal, For, Show, type Component } from "solid-js";
 
-const Document: Component = () => {
+const Document: Component<{ readonly?: boolean }> = (props) => {
   const [file, setFile] = createSignal<File | null>(null);
   const [content, setContent] = createSignal<string>("");
 
@@ -35,14 +35,14 @@ const Document: Component = () => {
     <Show
       when={file() !== null}
       fallback={
-      <div class="flex border border-gray-300 p-4">
-        <input
-        type="file"
-        accept=".txt"
-        onChange={handleFileChange}
-        class="w-full"
-        />
-      </div>
+        <div class="flex border border-gray-300 p-4">
+          <input
+            type="file"
+            accept=".txt"
+            onChange={handleFileChange}
+            class="w-full"
+          />
+        </div>
       }
     >
       <div class="flex flex-col overflow-auto h-full w-full p-4">
@@ -50,7 +50,12 @@ const Document: Component = () => {
         <div class="overflow-auto w-full border border-gray-300 flex-grow">
           <For each={splitIntoSentences(content())}>
             {(sentence) => (
-              <div class="border-b border-gray-300 py-1 hover:bg-gray-200 w-full">{sentence}</div>
+              <div
+                class={`border-b border-gray-300 py-1 w-full ${!props.readonly ? "hover:bg-gray-200" : ""
+                  }`}
+              >
+                {sentence}
+              </div>
             )}
           </For>
         </div>
@@ -63,7 +68,7 @@ const App: Component = () => {
   return (
     <div class="grid grid-cols-2 gap-4 h-screen items-center justify-items-center overflow-hidden px-4">
       <Document />
-      <Document />
+      <Document readonly />
     </div>
   );
 };
