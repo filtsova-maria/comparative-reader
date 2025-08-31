@@ -1,6 +1,13 @@
 import { BsChevronLeft, BsChevronRight, BsUpload } from "solid-icons/bs";
-import { Accessor, Component, createSignal, For, Show } from "solid-js";
-import IconButton from "./IconButton";
+import {
+  Accessor,
+  Component,
+  createEffect,
+  createSignal,
+  For,
+  Show,
+} from "solid-js";
+import { IconButton } from ".";
 
 interface IProps {
   uploadPrompt: string;
@@ -17,28 +24,28 @@ const Document: Component<IProps> = ({
 }) => {
   const [content, setContent] = createSignal<string>("");
 
-  async function handleFileChange(e: Event) {
-    const input = e.target as HTMLInputElement;
-    const file = input.files?.[0] ?? null;
-    setFile(file);
+  createEffect(() => {
+    updateContent();
+  });
 
-    if (file) {
+  const updateContent = () => {
+    if (file() !== null) {
       const reader = new FileReader();
       reader.onload = () => {
         setContent(reader.result as string);
       };
-      reader.readAsText(file);
+      reader.readAsText(file()!);
+    } else {
+      setContent("");
     }
+  };
+
+  async function handleFileChange(e: Event) {
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0] ?? null;
+    setFile(file);
+    updateContent();
   }
-  // Use test data
-  // createEffect(() => {
-  //   const longString = "TEST test. test Test test test test. \n".repeat(1000);
-  //   const testFile = new File([longString], "testfile.txt", {
-  //     type: "text/plain",
-  //   });
-  //   setFile(testFile);
-  //   setContent(longString);
-  // });
 
   function splitIntoSentences(text: string): string[] {
     return text.match(/[^\.!\?]+[\.!\?]+/g) || [];
@@ -48,7 +55,7 @@ const Document: Component<IProps> = ({
     <Show
       when={file() !== null}
       fallback={
-        <div class="flex border border-gray-300">
+        <div class="flex border border-gray-300 bg-white">
           <input
             type="file"
             id={`file-upload-${readonly ? "source" : "target"}`}
@@ -67,7 +74,7 @@ const Document: Component<IProps> = ({
       }
     >
       <div class="flex flex-col overflow-auto h-full w-full p-4">
-        <div class="flex justify-between items-center mb-2">
+        <div class="flex justify-between items-center mb-2 gap-2">
           <div class="flex items-center gap-2">
             <IconButton
               icon={BsUpload}
@@ -79,7 +86,7 @@ const Document: Component<IProps> = ({
                 input.click();
               }}
             />
-            <span class="overflow-hidden text-ellipsis whitespace-nowrap shrink">
+            <span class="overflow-hidden text-ellipsis whitespace-nowrap shrink text-neutral-500">
               {file()?.name}
             </span>
           </div>
@@ -87,7 +94,7 @@ const Document: Component<IProps> = ({
             <input
               type="text"
               placeholder="Search..."
-              class="border border-gray-300 rounded px-2 py-1"
+              class="border border-gray-300 rounded px-2 py-1 shadow-md"
               onInput={(e) => {
                 // TODO: save sentences that match the search term
                 // Allow to jump to the next match
@@ -107,7 +114,7 @@ const Document: Component<IProps> = ({
             />
           </div>
         </div>
-        <div class="overflow-auto w-full border border-gray-300 flex-grow">
+        <div class="overflow-auto w-full border border-gray-300 flex-grow bg-white shadow-md">
           <For each={splitIntoSentences(content())}>
             {(sentence) => (
               <div

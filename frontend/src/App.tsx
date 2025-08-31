@@ -1,18 +1,37 @@
 import { createSignal, type Component } from "solid-js";
-import Document from "./Document";
-// TODO: move all components to a separate folder with index.tsx for easier imports
-
+import { Document, IconButton, Toolbar, Tooltip } from "./components";
+import { BsArrowLeftRight } from "solid-icons/bs";
+// TODO: analyze how to select and store segments for searching, scrolling and comparison highlighting, consider scrollIntoView and a custom scrollbar
 const App: Component = () => {
   const [sourceFile, setSourceFile] = createSignal<File | null>(null);
   const [targetFile, setTargetFile] = createSignal<File | null>(null);
+
+  const bothFilesSelected = () =>
+    sourceFile() !== null && targetFile() !== null;
   return (
-    <div class="flex flex-col h-screen w-screen">
-      <div class="grid grid-cols-2 gap-4 h-screen items-center justify-items-center overflow-x-auto overflow-y-hidden">
+    <div class="flex flex-col h-screen w-screen bg-neutral-100">
+      <div
+        class={`grid ${
+          bothFilesSelected() ? "grid-cols-[1fr_auto_1fr]" : "grid-cols-2"
+        } gap-1 h-screen items-center justify-items-center overflow-x-auto overflow-y-hidden`}
+      >
         <Document
           file={sourceFile}
           setFile={setSourceFile}
           uploadPrompt="Upload a text document."
         />
+        {sourceFile() && targetFile() && (
+          <Tooltip text="Swap documents">
+            <IconButton
+              icon={BsArrowLeftRight}
+              onClick={() => {
+                const source = sourceFile();
+                setSourceFile(targetFile());
+                setTargetFile(source);
+              }}
+            />
+          </Tooltip>
+        )}
         <Document
           file={targetFile}
           setFile={setTargetFile}
@@ -20,9 +39,7 @@ const App: Component = () => {
           uploadPrompt="Upload a document to compare."
         />
       </div>
-      {sourceFile() && targetFile() && (
-        <div class="bg-red-300 w-full">Toolbar</div>
-      )}
+      {bothFilesSelected() && <Toolbar />}
     </div>
   );
 };
