@@ -12,7 +12,6 @@ export interface DocumentState {
   searchTerm: string;
   searchResults: string[];
   currentOccurrence: number;
-  selectedSegments: string[];
 }
 export interface DocumentStore {
   source: DocumentState;
@@ -24,13 +23,13 @@ export interface DocumentStore {
     type: TDocumentType,
     direction: "next" | "previous",
   ) => void;
-  toggleSegmentSelection: (type: TDocumentType, segmentId: string) => void;
-  selectMultipleSegments: (type: TDocumentType, segmentIds: string[]) => void;
-  clearSelection: (type: TDocumentType) => void;
+  selectedSegments: string[];
+  toggleSegmentSelection: (segmentId: string) => void;
+  clearSelection: () => void;
   selectSegmentRange: (
-    type: TDocumentType,
     startId: string,
     endId: string,
+    append?: boolean,
   ) => void;
 }
 
@@ -40,7 +39,6 @@ const initialState: DocumentState = {
   searchTerm: "",
   searchResults: [],
   currentOccurrence: 0,
-  selectedSegments: [],
 };
 
 const [documentStore, setDocumentStore] = createStore<DocumentStore>({
@@ -55,7 +53,7 @@ const [documentStore, setDocumentStore] = createStore<DocumentStore>({
       searchResults: [],
       currentOccurrence: 0,
     });
-    this.clearSelection(type);
+    this.clearSelection();
     // Manually clear the search input fields
     ["source-search-input", "target-search-input"].forEach((id) => {
       const input = document.getElementById(id) as HTMLInputElement | null;
@@ -128,9 +126,10 @@ const [documentStore, setDocumentStore] = createStore<DocumentStore>({
     });
   },
 
-  toggleSegmentSelection(type: TDocumentType, segmentId: string) {
+  selectedSegments: [],
+
+  toggleSegmentSelection(segmentId: string) {
     setDocumentStore(
-      type,
       "selectedSegments",
       (segments) =>
         segments.includes(segmentId)
@@ -139,13 +138,7 @@ const [documentStore, setDocumentStore] = createStore<DocumentStore>({
     );
   },
 
-  selectMultipleSegments(type: TDocumentType, segmentIds: string[]) {
-    setDocumentStore(type, "selectedSegments", (segments) => [
-      ...new Set([...segments, ...segmentIds]), // Add unique segment IDs
-    ]);
-  },
-
-  selectSegmentRange(type: TDocumentType, startId: string, endId: string) {
+  selectSegmentRange(startId: string, endId: string, append = false) {
     const startIndex = getSegmentIndexById(startId);
     const endIndex = getSegmentIndexById(endId);
 
@@ -155,15 +148,20 @@ const [documentStore, setDocumentStore] = createStore<DocumentStore>({
       { length: Math.abs(endIndex - startIndex) + 1 },
       (_, i) => {
         const index = startIndex < endIndex ? startIndex + i : endIndex + i;
-        return getSegmentIdByIndex(type, index);
+        return getSegmentIdByIndex("source", index);
       },
     );
-
-    setDocumentStore(type, "selectedSegments", range);
+    if (!append) {
+      setDocumentStore("selectedSegments", range);
+    } else {
+      setDocumentStore("selectedSegments", (segments) => [
+        ...new Set([...segments, ...range]),
+      ]);
+    }
   },
 
-  clearSelection(type: TDocumentType) {
-    setDocumentStore(type, "selectedSegments", []);
+  clearSelection() {
+    setDocumentStore("selectedSegments", []);
   },
 });
 

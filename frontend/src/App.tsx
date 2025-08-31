@@ -9,6 +9,13 @@ const App: Component = () => {
 
   const bothFilesSelected = () =>
     documentStore.source.file !== null && documentStore.target.file !== null;
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      documentStore.clearSelection();
+    }
+  });
+
   return (
     <div class="flex flex-col h-screen w-screen bg-neutral-100 p-4">
       <div
