@@ -1,7 +1,6 @@
 import { createSignal, type Component } from "solid-js";
 import { Document, IconButton, Toolbar, Tooltip } from "./components";
 import { BsArrowLeftRight } from "solid-icons/bs";
-// TODO: analyze how to select and store segments for searching, scrolling and comparison highlighting, consider scrollIntoView
 // TODO: consider state management for search parameters possibly using a store or context
 // TODO: custom scrollbar component that highlights segments of interest, think about how to mark and access segments in the document
 // TODO: shortcuts for navigation, inputs and actions
