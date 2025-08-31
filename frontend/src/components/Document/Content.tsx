@@ -1,8 +1,12 @@
 import { Component, For, Show } from "solid-js";
-import { getSegmentIdByIndex, splitIntoSentences } from "./utils";
+import {
+  getSegmentIdByIndex,
+  scrollToSegment,
+  splitIntoSentences,
+} from "./utils";
 import { Row } from "..";
 import { createKeyHold } from "@solid-primitives/keyboard";
-import { getSegmentStyle } from "./styles";
+import { calculateSegmentHighlightStyle, getSegmentStyle } from "./styles";
 import { useDocumentStore } from "../../store/context";
 import { TDocumentType } from "../../store";
 
@@ -18,8 +22,6 @@ const Content: Component<IProps> = (props) => {
   let isSelecting = false;
   let startSegmentId: string | null = null;
   const ctrlKeyPressed = createKeyHold("Control");
-
-  // TODO: align similarities with segment IDs to display them on the scroll bar
 
   const handleMouseDown = (segmentId: string) => {
     isSelecting = true;
@@ -93,12 +95,32 @@ const Content: Component<IProps> = (props) => {
         </For>
       </div>
       <Show when={props.type === "target"}>
-        <div class="bg-gray-200 h-svh w-6">
-          {store.similarity.state.similarities.map(([index, value]) => (
-            <div>
-              {index}: {value}
-            </div>
-          ))}
+        <div class="relative bg-gray-200 h-full w-6">
+          <For each={store.similarity.getVisibleSimilarities()}>
+            {([segmentId, similarity]) => {
+              const totalSegments = store.similarity.state.similarities.length;
+              const position = (segmentId / totalSegments) * 100; // Calculate position as a percentage
+              const highlightStyle = calculateSegmentHighlightStyle(
+                similarity,
+                false,
+              );
+              // TODO: highlight current similarity occurrence
+              // TODO: optimize visibleSimilarities access by memoizing
+              // TODO: add and debug tooltip
+
+              return (
+                <div
+                  class={`absolute left-0 w-full h-2 cursor-pointer ${highlightStyle}`}
+                  style={{
+                    top: `${position}%`,
+                  }}
+                  onClick={() =>
+                    scrollToSegment(getSegmentIdByIndex("target", segmentId))
+                  }
+                />
+              );
+            }}
+          </For>
         </div>
       </Show>
     </Row>

@@ -3,8 +3,8 @@ import { BottomToolbar, Document, IconButton, Tooltip } from "./components";
 import { BsArrowLeftRight } from "solid-icons/bs";
 import { useDocumentStore } from "./store/context";
 import { similarityStore } from "./store/modules/similarity";
-// TODO: custom scrollbar component that highlights segments of interest, think about how to mark and access segments in the document
 // TODO: shortcuts for navigation, inputs and actions
+// TODO: update documentation, describe architecture and state management
 const App: Component = () => {
   const { source, target, selection, swapDocuments } = useDocumentStore();
 
