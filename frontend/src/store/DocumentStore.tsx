@@ -35,6 +35,7 @@ export interface DocumentStore {
   target: DocumentState;
   selectedSegments: string[];
   similarities: number[];
+sensitivity: number;
   setFile: (type: TDocumentType, file: File | null) => Promise<void>;
   updateContent: (type: TDocumentType) => Promise<void>;
   setSearchTerm: (type: TDocumentType, term: string) => void;
@@ -67,6 +68,7 @@ const [documentStore, setDocumentStore] = createStore<DocumentStore>({
   target: { ...initialState },
   selectedSegments: [],
   similarities: [],
+sensitivity: 50,
 
   async setFile(type, file) {
     setDocumentStore(type, "file", file);

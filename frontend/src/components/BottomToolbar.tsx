@@ -1,12 +1,13 @@
 import { Component, createSignal } from "solid-js";
 import { IconButton, Label, RangeInput, Row, SelectInput } from ".";
 import { BsChevronLeft, BsChevronRight } from "solid-icons/bs";
+import { useDocumentStore } from "../store/DocumentStore";
 
 interface IProps {}
 
 const BottomToolbar: Component<IProps> = () => {
-  // TODO: consider setting actual sensitivity onChange and displaying it onInput when backend is implemented
   const [sensitivity, setSensitivity] = createSignal<number>(50);
+  const { documentStore, setDocumentStore } = useDocumentStore();
 
   return (
     <div class="w-full flex p-4 gap-4">
@@ -19,6 +20,9 @@ const BottomToolbar: Component<IProps> = () => {
           value={sensitivity()}
           onInput={(e) => {
             setSensitivity(Number(e.currentTarget.value));
+          }}
+          onChange={(e) => {
+            setDocumentStore("sensitivity", Number(e.currentTarget.value));
           }}
         />
         <Label>{sensitivity()} %</Label>
