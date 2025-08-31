@@ -3,7 +3,7 @@ import { IconButton, Label, RangeInput, Row, SelectInput } from ".";
 import { BsChevronLeft, BsChevronRight } from "solid-icons/bs";
 
 interface IProps {}
-const Toolbar: Component<IProps> = () => {
+const BottomToolbar: Component<IProps> = () => {
   // TODO: consider setting actual sensitivity onChange and displaying it onInput when backend is implemented
   const [sensitivity, setSensitivity] = createSignal<number>(50);
 
@@ -48,4 +48,4 @@ const Toolbar: Component<IProps> = () => {
   );
 };
 
-export default Toolbar;
+export default BottomToolbar;
