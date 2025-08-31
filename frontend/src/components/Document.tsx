@@ -65,6 +65,7 @@ const Document: Component<IProps> = (props) => {
     const file = input.files?.[0] ?? null;
     props.setFile(file);
     updateContent();
+    resetSearchState();
   }
 
   const splitIntoSentences = (text: string): string[] => {
