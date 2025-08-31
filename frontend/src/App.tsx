@@ -22,12 +22,15 @@ const App: Component = () => {
           file={sourceFile}
           setFile={setSourceFile}
           uploadPrompt="Upload a text document."
+          id="source"
         />
         {sourceFile() && targetFile() && (
           <Tooltip text="Swap documents">
             <IconButton
               icon={BsArrowLeftRight}
               onClick={() => {
+                // TODO: reset search parameters and scroll positions
+                // Consider using a store or context for managing search state
                 const source = sourceFile();
                 setSourceFile(targetFile());
                 setTargetFile(source);
@@ -40,6 +43,7 @@ const App: Component = () => {
           setFile={setTargetFile}
           readonly
           uploadPrompt="Upload a document to compare."
+          id="target"
         />
       </div>
       {bothFilesSelected() && <Toolbar />}
