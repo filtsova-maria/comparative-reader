@@ -7,7 +7,7 @@ interface IProps {}
 
 const BottomToolbar: Component<IProps> = () => {
   const [sensitivity, setSensitivity] = createSignal<number>(50);
-  const { documentStore, setDocumentStore } = useDocumentStore();
+  const { setDocumentStore } = useDocumentStore();
 
   return (
     <div class="w-full flex p-4 gap-4">

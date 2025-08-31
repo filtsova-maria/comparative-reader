@@ -1,14 +1,41 @@
 import { Component, For, Show } from "solid-js";
-import { getSegmentIdByIndex, splitIntoSentences } from "./utils";
+import {
+  getSegmentIdByIndex,
+  getSegmentIndexById,
+  splitIntoSentences,
+} from "./utils";
 import { Row } from "..";
 import { TDocumentType, useDocumentStore } from "../../store/DocumentStore";
 import { createKeyHold } from "@solid-primitives/keyboard";
 
+// TODO: extract styles
 const styles = {
   activeSegmentColors: "bg-cyan-100 hover:bg-cyan-200",
   inactiveSegmentColors: "bg-white hover:bg-gray-200",
   readonlySegmentColors: "bg-white",
   foundCurrentSegmentColors: "bg-gray-200",
+};
+const similarityShades = [
+  "bg-cyan-100/40",
+  "bg-cyan-200/40",
+  "bg-cyan-300/40",
+  "bg-cyan-400/40",
+  "bg-cyan-500/40",
+  "bg-cyan-600/40",
+  "bg-cyan-700/40",
+  "bg-cyan-800/40",
+  "bg-cyan-900/40",
+];
+
+/**
+ * Calculates segment color intensity based on similarity.
+ * @param similarity from 0 to 1
+ * @param sensitivity from 0 to 100
+ * @returns CSS class for segment background color
+ */
+const calculateSegmentHighlightStyle = (similarity: number): string => {
+  const index = Math.round(similarity * (similarityShades.length - 1));
+  return similarityShades[index];
 };
 
 interface IProps {
@@ -22,9 +49,19 @@ const Content: Component<IProps> = (props) => {
   let startSegmentId: string | null = null;
   const ctrlKeyPressed = createKeyHold("Control");
 
+  // TODO: align similarities with segment IDs to display them on the scroll bar
+  // TODO: refactor styles function and probably extract it
   const getSegmentStyle = (id: string): string => {
     if (documentStore.selectedSegments.includes(id)) {
       return styles.activeSegmentColors;
+    }
+    const segmentSimilarity =
+      documentStore.similarities[getSegmentIndexById(id)];
+    if (
+      props.type === "target" &&
+      segmentSimilarity > documentStore.sensitivity / 100
+    ) {
+      return calculateSegmentHighlightStyle(segmentSimilarity);
     }
     if (documentStore[props.type].searchResults.includes(id)) {
       return documentStore[props.type].currentOccurrence ===
@@ -106,7 +143,11 @@ const Content: Component<IProps> = (props) => {
         </For>
       </div>
       <Show when={props.type === "target"}>
-        <div class="bg-gray-200 h-svh w-6"></div>
+        <div class="bg-gray-200 h-svh w-6">
+          {documentStore.similarities.map((sim) => (
+            <div>{sim}</div>
+          ))}
+        </div>
       </Show>
     </Row>
   );
