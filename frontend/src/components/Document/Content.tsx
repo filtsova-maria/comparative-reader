@@ -14,6 +14,7 @@ const styles = {
   inactiveSegmentColors: "bg-white hover:bg-gray-200",
   readonlySegmentColors: "bg-white",
   foundCurrentSegmentColors: "bg-gray-200",
+  similarityCurrentSegmentColors: "font-bold",
 };
 const similarityShades = [
   "bg-highlight-1",
@@ -29,12 +30,15 @@ const similarityShades = [
  * @param sensitivity from 0 to 100
  * @returns CSS class for segment background color
  */
-const calculateSegmentHighlightStyle = (similarity: number): string => {
+const calculateSegmentHighlightStyle = (
+  similarity: number,
+  isHighlighted: boolean,
+): string => {
   const index = Math.min(
     Math.ceil(similarity * similarityShades.length) - 1,
     similarityShades.length - 1,
   );
-  return similarityShades[index];
+  return similarityShades[index] + (isHighlighted ? " font-bold" : "");
 };
 
 interface IProps {
@@ -55,15 +59,20 @@ const Content: Component<IProps> = (props) => {
       return styles.activeSegmentColors;
     }
     const segmentSimilarity =
-      documentStore.similarities[getSegmentIndexById(id)];
+      documentStore.similarities[getSegmentIndexById(id)]?.[1];
     if (
       props.type === "target" &&
-      segmentSimilarity > documentStore.sensitivity / 100
+      segmentSimilarity !== undefined &&
+      segmentSimilarity >= documentStore.sensitivity
     ) {
-      return calculateSegmentHighlightStyle(segmentSimilarity);
+      const isHighlighted =
+        documentStore.getVisibleSimilarities()[
+          documentStore.currentSimilarityOccurrence
+        ][0] === getSegmentIndexById(id);
+      return calculateSegmentHighlightStyle(segmentSimilarity, isHighlighted);
     }
     if (documentStore[props.type].searchResults.includes(id)) {
-      return documentStore[props.type].currentOccurrence ===
+      return documentStore[props.type].currentSearchOccurrence ===
         documentStore[props.type].searchResults.indexOf(id)
         ? styles.foundCurrentSegmentColors
         : styles.inactiveSegmentColors;
@@ -92,6 +101,7 @@ const Content: Component<IProps> = (props) => {
   const handleMouseUp = async () => {
     isSelecting = false;
     startSegmentId = null;
+    if (documentStore.selectedSegments.length === 0) return;
     await documentStore.computeSimilarity();
   };
 
@@ -143,8 +153,10 @@ const Content: Component<IProps> = (props) => {
       </div>
       <Show when={props.type === "target"}>
         <div class="bg-gray-200 h-svh w-6">
-          {documentStore.similarities.map((sim) => (
-            <div>{sim}</div>
+          {documentStore.similarities.map(([index, value]) => (
+            <div>
+              {index}: {value}
+            </div>
           ))}
         </div>
       </Show>
