@@ -8,6 +8,7 @@ import {
   Show,
 } from "solid-js";
 import { Col, IconButton, Label, Row, TextInput } from ".";
+import UploadInput from "./UploadInput";
 
 interface IProps {
   uploadPrompt: string;
@@ -15,22 +16,24 @@ interface IProps {
   file: Accessor<File | null>;
   setFile: (file: File | null) => void;
   id: string;
+  onResetSearchState: (resetFn: () => void) => void;
 }
 
-const Document: Component<IProps> = ({
-  uploadPrompt,
-  file,
-  setFile,
-  readonly = false,
-  id,
-}) => {
+const Document: Component<IProps> = (props) => {
   const [content, setContent] = createSignal<string>("");
   const [searchTerm, setSearchTerm] = createSignal<string>("");
   const [searchResults, setSearchResults] = createSignal<string[]>([]);
   const [currentOccurrence, setCurrentOccurrence] = createSignal<number>(0);
 
-  // TODO: refactor component, extract scrolling logic to a separate function
-  // and use it in both search and segment click handlers
+  const resetSearchState = () => {
+    setSearchTerm("");
+    setSearchResults([]);
+    setCurrentOccurrence(0);
+  };
+
+  createEffect(() => {
+    props.onResetSearchState(resetSearchState);
+  });
 
   const styles = {
     // TODO: switch to making search text bold instead of changing background color and use colorful highlighting for semantic search
@@ -46,12 +49,12 @@ const Document: Component<IProps> = ({
   });
 
   const updateContent = () => {
-    if (file() !== null) {
+    if (props.file() !== null) {
       const reader = new FileReader();
       reader.onload = () => {
         setContent(reader.result as string);
       };
-      reader.readAsText(file()!);
+      reader.readAsText(props.file()!);
     } else {
       setContent("");
     }
@@ -60,7 +63,7 @@ const Document: Component<IProps> = ({
   async function handleFileChange(e: Event) {
     const input = e.target as HTMLInputElement;
     const file = input.files?.[0] ?? null;
-    setFile(file);
+    props.setFile(file);
     updateContent();
   }
 
@@ -74,31 +77,26 @@ const Document: Component<IProps> = ({
         ? styles.foundCurrentSegmentColors
         : styles.foundSegmentColors;
     }
-    return readonly
+    return props.readonly
       ? styles.readonlySegmentColors
       : styles.inactiveSegmentColors;
   };
 
+  const scrollToSegment = (id: string) => {
+    document
+      .getElementById(id)
+      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
   return (
     <Show
-      when={file() !== null}
+      when={props.file() !== null}
       fallback={
-        <div class="flex border border-gray-300 bg-white">
-          <input
-            type="file"
-            id={`file-upload-${readonly ? "source" : "target"}`}
-            accept=".txt"
-            onChange={handleFileChange}
-            class="hidden"
-          />
-          <label
-            for={`file-upload-${readonly ? "source" : "target"}`}
-            class="p-4 w-full h-full text-center hover:bg-gray-300 cursor-pointer flex flex-col items-center justify-center gap-2"
-          >
-            <BsUpload />
-            {uploadPrompt}
-          </label>
-        </div>
+        <UploadInput
+          id={`file-upload-${props.readonly ? "source" : "target"}`}
+          uploadPrompt={props.uploadPrompt}
+          handleFileChange={handleFileChange}
+        />
       }
     >
       <Col className="overflow-hidden items-stretch h-full w-full">
@@ -115,7 +113,7 @@ const Document: Component<IProps> = ({
               }}
             />
             <Label className="shrink text-ellipsis overflow-hidden whitespace-nowrap">
-              {file()?.name}
+              {props.file()?.name}
             </Label>
           </Row>
           <Row>
@@ -131,7 +129,9 @@ const Document: Component<IProps> = ({
                   setCurrentOccurrence(0);
                   return;
                 }
-                const parentElement = document.getElementById(`${id}-text`);
+                const parentElement = document.getElementById(
+                  `${props.id}-text`,
+                );
                 if (parentElement) {
                   const children = Array.from(parentElement.children);
                   const matches = children
@@ -144,29 +144,20 @@ const Document: Component<IProps> = ({
                   setSearchResults(matches);
                 }
                 setCurrentOccurrence(0);
-                document
-                  .getElementById(searchResults()[currentOccurrence()])
-                  ?.scrollIntoView({ behavior: "smooth", block: "center" });
+                scrollToSegment(searchResults()[currentOccurrence()]);
               }}
               value={searchTerm()}
             />
             <IconButton
               icon={BsChevronLeft}
-              // TODO: debug disabled state reactive updates
-              // disabled={
-              //   searchResults().length === 0 || currentOccurrence() === 0
-              // }
+              disabled={
+                searchResults().length === 0 || currentOccurrence() === 0
+              }
               onClick={() => {
                 setCurrentOccurrence((prev) => {
                   const next = prev - 1;
                   if (next >= 0) {
-                    const scrollElement = document.getElementById(
-                      searchResults()[next],
-                    );
-                    scrollElement?.scrollIntoView({
-                      behavior: "smooth",
-                      block: "center",
-                    });
+                    scrollToSegment(searchResults()[next]);
                     return next;
                   }
                   return prev;
@@ -175,21 +166,15 @@ const Document: Component<IProps> = ({
             />
             <IconButton
               icon={BsChevronRight}
-              // disabled={
-              //   searchResults().length === 0 ||
-              //   currentOccurrence() >= searchResults().length - 1
-              // }
+              disabled={
+                searchResults().length === 0 ||
+                currentOccurrence() >= searchResults().length - 1
+              }
               onClick={() => {
                 setCurrentOccurrence((prev) => {
                   const next = prev + 1;
                   if (prev < searchResults().length - 1) {
-                    const scrollElement = document.getElementById(
-                      searchResults()[next],
-                    );
-                    scrollElement?.scrollIntoView({
-                      behavior: "smooth",
-                      block: "center",
-                    });
+                    scrollToSegment(searchResults()[next]);
                     return next;
                   }
                   return prev;
@@ -200,15 +185,15 @@ const Document: Component<IProps> = ({
         </Row>
         <Row className="overflow-hidden items-stretch">
           <div
-            id={`${id}-text`}
+            id={`${props.id}-text`}
             class="overflow-scroll w-full border border-gray-300 flex-grow bg-white shadow-md"
           >
             <For each={splitIntoSentences(content())}>
               {(sentence, idx) => {
-                const segmentId = `${readonly ? "target" : "source"}-segment-${idx()}`;
+                const segmentId = `${props.readonly ? "target" : "source"}-segment-${idx()}`;
                 return (
                   <a
-                    class={`block border-b border-gray-300 p-1 w-full ${getSegmentStyle(segmentId)}`}
+                    class={`block border-b border-gray-300 p-1 w-fuboldll ${getSegmentStyle(segmentId)}`}
                     id={segmentId}
                   >
                     {sentence}
@@ -217,7 +202,7 @@ const Document: Component<IProps> = ({
               }}
             </For>
           </div>
-          <Show when={readonly}>
+          <Show when={props.readonly}>
             <div class="bg-gray-200 h-svh w-6"></div>
           </Show>
         </Row>
