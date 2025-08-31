@@ -3,8 +3,8 @@ import { Row, Label } from "..";
 import IconButton from "../IconButton";
 import { BsChevronLeft, BsChevronRight, BsUpload } from "solid-icons/bs";
 import TextInput from "../inputs/TextInput";
-import { TDocumentType } from "../../store/document";
 import { useDocumentStore } from "../../store/context";
+import { TDocumentType } from "../../store";
 
 interface IProps {
   fileName: string;

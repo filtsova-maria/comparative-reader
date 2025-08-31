@@ -1,5 +1,5 @@
 import { Component, createContext, useContext } from "solid-js";
-import { rootStore } from "./store";
+import { rootStore } from ".";
 
 const DocumentContext = createContext(rootStore);
 

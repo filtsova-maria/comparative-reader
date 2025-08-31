@@ -4,7 +4,7 @@ import { Row } from "..";
 import { createKeyHold } from "@solid-primitives/keyboard";
 import { getSegmentStyle } from "./styles";
 import { useDocumentStore } from "../../store/context";
-import { TDocumentType } from "../../store/document";
+import { TDocumentType } from "../../store";
 
 interface IProps {
   type: TDocumentType;

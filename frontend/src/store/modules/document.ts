@@ -3,10 +3,11 @@ import {
   getSegmentIdByIndex,
   scrollToSegment,
   splitIntoSentences,
-} from "../components/Document/utils";
-import { apiPost, UploadSegmentsResponse } from "./api";
-import { similarityStore } from "./similarity";
+} from "../../components/Document/utils";
+import { apiPost, UploadSegmentsResponse } from "../api";
+import { TDocumentType } from "..";
 import { selectionStore } from "./selection";
+import { similarityStore } from "./similarity";
 
 export interface DocumentState {
   file: File | null;
@@ -26,7 +27,6 @@ const initialDocumentState: DocumentState = {
   loading: false,
 };
 
-export type TDocumentType = "source" | "target";
 // TODO: search can be slow on large documents, consider debouncing
 export function createDocumentStore(type: TDocumentType) {
   const [state, setState] = createStore<DocumentState>({

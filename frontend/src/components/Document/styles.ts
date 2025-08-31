@@ -1,5 +1,4 @@
-import { TDocumentType } from "../../store/document";
-import { RootStore } from "../../store/store";
+import { RootStore, TDocumentType } from "../../store";
 import { getSegmentIndexById } from "./utils";
 
 const styles = {

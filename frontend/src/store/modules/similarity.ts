@@ -1,10 +1,10 @@
 import { createStore } from "solid-js/store";
-import { apiPost, ComputeSimilarityResponse } from "./api";
+import { apiPost, ComputeSimilarityResponse } from "../api";
 import {
   getSegmentIdByIndex,
   getSegmentIndexById,
   scrollToSegment,
-} from "../components/Document/utils";
+} from "../../components/Document/utils";
 
 export type SimilarityEntry = [number, number];
 

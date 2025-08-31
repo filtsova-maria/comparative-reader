@@ -1,6 +1,6 @@
-import { createDocumentStore } from "./document";
-import { similarityStore } from "./similarity";
-import { selectionStore } from "./selection";
+import { createDocumentStore } from "./modules/document";
+import { similarityStore } from "./modules/similarity";
+import { selectionStore } from "./modules/selection";
 import { apiPost, SwapDocumentsResponse } from "./api";
 
 const source = createDocumentStore("source");
@@ -36,3 +36,5 @@ export const rootStore: RootStore = {
     similarityStore.clearSimilarities();
   },
 };
+
+export type TDocumentType = "source" | "target";

@@ -3,8 +3,8 @@ import { Col, LoadingSpinner } from "..";
 import UploadInput from "./UploadInput";
 import Toolbar from "./Toolbar";
 import Content from "./Content";
-import { TDocumentType } from "../../store/document";
 import { useDocumentStore } from "../../store/context";
+import { TDocumentType } from "../../store";
 
 interface IProps {
   uploadPrompt: string;

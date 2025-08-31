@@ -2,6 +2,7 @@ import { type Component } from "solid-js";
 import { BottomToolbar, Document, IconButton, Tooltip } from "./components";
 import { BsArrowLeftRight } from "solid-icons/bs";
 import { useDocumentStore } from "./store/context";
+import { similarityStore } from "./store/modules/similarity";
 // TODO: custom scrollbar component that highlights segments of interest, think about how to mark and access segments in the document
 // TODO: shortcuts for navigation, inputs and actions
 const App: Component = () => {
@@ -13,6 +14,7 @@ const App: Component = () => {
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
       selection.clearSelection();
+      similarityStore.clearSimilarities();
     }
   });
 

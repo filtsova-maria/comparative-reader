@@ -2,7 +2,7 @@ import { createStore } from "solid-js/store";
 import {
   getSegmentIdByIndex,
   getSegmentIndexById,
-} from "../components/Document/utils";
+} from "../../components/Document/utils";
 import { similarityStore } from "./similarity";
 
 const [state, setState] = createStore({ selectedSegments: [] as string[] });
