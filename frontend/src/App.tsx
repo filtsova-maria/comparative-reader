@@ -1,46 +1,59 @@
-import { createSignal, Show, type Component } from "solid-js";
+import { createEffect, createSignal, Show, type Component } from "solid-js";
 
-interface FileInputProps {}
+interface FileInputProps { }
 
 const Document: Component<FileInputProps> = ({ onFileChange }) => {
   const [file, setFile] = createSignal<File | null>(null);
-  async function uploadFile(formData) {
-    try {
-      const response = await fetch("/upload", {
-        method: "POST",
-        body: formData,
-      });
+  const [content, setContent] = createSignal<string>("");
 
-      if (response.ok) {
-        // document.getElementById('uploadStatus').textContent = 'File uploaded successfully!';
-      } else {
-        // document.getElementById('uploadStatus').textContent = 'Upload failed.';
-      }
-    } catch (error) {
-      console.error("Error:", error);
-      // document.getElementById('uploadStatus').textContent = 'An error occurred while uploading the file.';
+  async function handleFileChange(e: Event) {
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0] ?? null;
+    setFile(file);
+
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setContent(reader.result as string);
+      };
+      reader.readAsText(file);
     }
   }
+  // Use test data
+  // createEffect(() => {
+  //   const longString = "TEST \n".repeat(10000);
+  //   const testFile = new File([longString], "testfile.txt", {
+  //     type: "text/plain",
+  //   });
+  //   setFile(testFile);
+  //   setContent(longString);
+  // });
+
   return (
     <Show
       when={file() !== null}
       fallback={
-        <div class="flex">
-          <input
-            type="file"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-          />
-        </div>
+      <div class="flex">
+        <input
+        type="file"
+        accept=".txt"
+        onChange={handleFileChange}
+        class="w-full"
+        />
+      </div>
       }
     >
-      file
+      <div class="flex flex-col overflow-auto max-h-full w-full">
+      <h2>{file()?.name}</h2>
+      <pre class="overflow-auto w-full">{content()}</pre>
+      </div>
     </Show>
   );
 };
 
 const App: Component = () => {
   return (
-    <div class="grid grid-cols-2 h-screen items-center justify-items-center">
+    <div class="grid grid-cols-2 gap-4 h-screen items-center justify-items-center overflow-hidden px-4">
       <Document />
       <Document />
     </div>
