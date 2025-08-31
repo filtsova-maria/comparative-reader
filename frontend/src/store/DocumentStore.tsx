@@ -13,7 +13,6 @@ export interface DocumentStore {
   source: DocumentState;
   target: DocumentState;
   setFile: (type: TDocumentType, file: File | null) => void;
-  resetSearchState: (type: TDocumentType) => void;
   updateContent: (type: TDocumentType) => void;
   setSearchTerm: (type: TDocumentType, term: string) => void;
   setCurrentOccurrence: (
@@ -37,14 +36,15 @@ const [documentStore, setDocumentStore] = createStore<DocumentStore>({
   setFile(type, file) {
     setDocumentStore(type, "file", file);
     documentStore.updateContent(type);
-    documentStore.resetSearchState(type);
-  },
-
-  resetSearchState(type) {
     setDocumentStore(type, {
       searchTerm: "",
       searchResults: [],
       currentOccurrence: 0,
+    });
+    // Manually clear the search input fields
+    ["source-search-input", "target-search-input"].forEach((id) => {
+      const input = document.getElementById(id) as HTMLInputElement | null;
+      if (input) input.value = "";
     });
   },
 

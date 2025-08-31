@@ -3,13 +3,13 @@ import { Component } from "solid-js";
 import { TDocumentType } from "../../store/DocumentStore";
 
 interface IProps {
-  id: TDocumentType;
+  type: TDocumentType;
   uploadPrompt: string;
   handleFileChange: (event: Event) => void;
 }
 
 const UploadInput: Component<IProps> = (props) => {
-  const inputId = `file-upload-${props.id}`;
+  const inputId = `file-upload-${props.type}`;
 
   return (
     <div class="flex border border-gray-300 bg-white">
