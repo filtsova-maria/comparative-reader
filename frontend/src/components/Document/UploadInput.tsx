@@ -1,34 +1,31 @@
 import { BsUpload } from "solid-icons/bs";
 import { Component } from "solid-js";
+import { TDocumentType } from "../../store/DocumentStore";
 
 interface IProps {
-  id: string;
+  id: TDocumentType;
   uploadPrompt: string;
-  handleFileChange: (
-    event: Event & { currentTarget: HTMLInputElement },
-  ) => void;
+  handleFileChange: (event: Event) => void;
 }
 
-const UploadInput: Component<IProps> = ({
-  id,
-  uploadPrompt,
-  handleFileChange,
-}) => {
+const UploadInput: Component<IProps> = (props) => {
+  const inputId = `file-upload-${props.id}`;
+
   return (
     <div class="flex border border-gray-300 bg-white">
       <input
         type="file"
-        id={id}
+        id={inputId}
         accept=".txt"
-        onChange={handleFileChange}
+        onChange={props.handleFileChange}
         class="hidden"
       />
       <label
-        for={id}
+        for={inputId}
         class="p-4 w-full h-full text-center hover:bg-gray-300 cursor-pointer flex flex-col items-center justify-center gap-2"
       >
         <BsUpload />
-        {uploadPrompt}
+        {props.uploadPrompt}
       </label>
     </div>
   );
