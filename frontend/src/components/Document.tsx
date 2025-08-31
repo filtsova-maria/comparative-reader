@@ -88,6 +88,26 @@ const Document: Component<IProps> = (props) => {
       ?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
 
+  const onSearchTermChange = (term: string) => {
+    if (term === "") {
+      setSearchResults([]);
+      setCurrentOccurrence(0);
+      return;
+    }
+    const parentElement = document.getElementById(`${props.id}-text`);
+    if (parentElement) {
+      const children = Array.from(parentElement.children);
+      const matches = children
+        .filter((child) =>
+          child.textContent?.toLowerCase().includes(term.toLowerCase()),
+        )
+        .map((child) => child.id);
+      setSearchResults(matches);
+    }
+    setCurrentOccurrence(0);
+    scrollToSegment(searchResults()[currentOccurrence()]);
+  };
+
   return (
     <Show
       when={props.file() !== null}
@@ -99,7 +119,7 @@ const Document: Component<IProps> = (props) => {
         />
       }
     >
-      <Col className="overflow-hidden items-stretch h-full w-full">
+      <Col className="overflow-y-hidden items-stretch h-full w-full">
         <Row className="justify-between mb-2 m-[2px]">
           <Row className="max-w-[50%]">
             <IconButton
@@ -117,34 +137,16 @@ const Document: Component<IProps> = (props) => {
             </Label>
           </Row>
           <Row>
+            {searchResults().length > 0 && (
+              <Label className="text-sm">
+                {currentOccurrence() + 1}/{searchResults().length}
+              </Label>
+            )}
             <TextInput
               type="text"
               placeholder="Search..."
               onInput={(e) => {
-                // TODO: consider debouncing this input
-                // TODO: show number of occurrences found and current occurrence
-                setSearchTerm(e.currentTarget.value);
-                if (e.currentTarget.value === "") {
-                  setSearchResults([]);
-                  setCurrentOccurrence(0);
-                  return;
-                }
-                const parentElement = document.getElementById(
-                  `${props.id}-text`,
-                );
-                if (parentElement) {
-                  const children = Array.from(parentElement.children);
-                  const matches = children
-                    .filter((child) =>
-                      child.textContent
-                        ?.toLowerCase()
-                        .includes(searchTerm().toLowerCase()),
-                    )
-                    .map((child) => child.id);
-                  setSearchResults(matches);
-                }
-                setCurrentOccurrence(0);
-                scrollToSegment(searchResults()[currentOccurrence()]);
+                onSearchTermChange(e.currentTarget.value);
               }}
               value={searchTerm()}
             />
@@ -191,6 +193,7 @@ const Document: Component<IProps> = (props) => {
             <For each={splitIntoSentences(content())}>
               {(sentence, idx) => {
                 const segmentId = `${props.readonly ? "target" : "source"}-segment-${idx()}`;
+                // TODO: highlight search term in sentences
                 return (
                   <a
                     class={`block border-b border-gray-300 p-1 w-fuboldll ${getSegmentStyle(segmentId)}`}
