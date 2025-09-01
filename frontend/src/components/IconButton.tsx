@@ -1,6 +1,6 @@
-import { Component } from "solid-js";
+import { Component, JSX } from "solid-js";
 
-interface IProps {
+interface IProps extends JSX.ButtonHTMLAttributes<HTMLButtonElement> {
   icon: Component;
   onClick: () => void;
   className?: string;

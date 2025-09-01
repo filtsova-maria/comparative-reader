@@ -6,9 +6,10 @@ import {
 } from "./utils";
 import { Row } from "..";
 import { createKeyHold } from "@solid-primitives/keyboard";
-import { calculateSegmentHighlightStyle, getSegmentStyle } from "./styles";
+import { getSegmentStyle } from "./styles";
 import { useDocumentStore } from "../../store/context";
 import { TDocumentType } from "../../store";
+import SimilarityRectangle from "./SimilarityRectangle";
 
 interface IProps {
   type: TDocumentType;
@@ -100,20 +101,13 @@ const Content: Component<IProps> = (props) => {
             {([segmentId, similarity]) => {
               const totalSegments = store.similarity.state.similarities.length;
               const position = (segmentId / totalSegments) * 100; // Calculate position as a percentage
-              const highlightStyle = calculateSegmentHighlightStyle(
-                similarity,
-                false,
-              );
               // TODO: highlight current similarity occurrence
               // TODO: optimize visibleSimilarities access by memoizing
-              // TODO: add and debug tooltip
 
               return (
-                <div
-                  class={`absolute left-0 w-full h-2 cursor-pointer ${highlightStyle}`}
-                  style={{
-                    top: `${position}%`,
-                  }}
+                <SimilarityRectangle
+                  position={position}
+                  similarity={similarity}
                   onClick={() =>
                     scrollToSegment(getSegmentIdByIndex("target", segmentId))
                   }
