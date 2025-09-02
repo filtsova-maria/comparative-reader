@@ -6,12 +6,31 @@ The project is a UI concept designed to enable comparative reading of documents,
 
 **Target Operating System**: Cross-platform (Browser-based).
 
-## Functionality
+## User documentation
 
-- **User Document Comparison**: Users can select two documents from a preprocessed document corpus.
-- **Similarity Visualization**: Similar sections between documents are highlighted based on similarity scores.
+![app screenshot](./screenshots/1.png)
 
-### Program Structure
+You can upload text files from your computer using the file inputs in the main view. The sentences selected from the left document (**source**) are compared against all sentences from the right document (**target**). You can swap the uploaded documents as needed. Once both documents are selected, a bottom toolbar appears that allows you to adjust similarity sensitivity threshold, pick between different similarity models, and navigate between similarity occurrences. 
+
+![app screenshot](./screenshots/2.png)
+
+### Features
+
+#### Text search
+- Search them by exact text using their respective **search bars**. It also displays number of occurrences.
+- You can then navigate between the segments containing your query using the arrows near the search bar.
+- All search occurrences are highlighted in bold.
+
+#### Similarity search
+- Compare parts of the source document to the target document by selecting segments with your mouse.
+- You can click to toggle selection or drag to select multiple segments.
+- Press **ESC** to clear selection.
+- Hold the **Ctrl** key to select discontinuous parts of text.
+- You can navigate between the **occurrences** using the arrow keys in the bottom toolbar. Current occurrence is highlighted in bold.
+- Hover the highlights on the right to see the similarity percentage of a given segment to your selection, click to navigate there.
+- If you want to highlight more or less segments, you can adjust the **sensitivity** in the bottom toolbar.
+
+## Program Structure
 
 - **Languages and Frameworks**:
   - **Frontend**: TypeScript, [Solid.js](https://www.solidjs.com/).
@@ -19,13 +38,22 @@ The project is a UI concept designed to enable comparative reading of documents,
   - **Testing Data**: The [Memorise](https://ufal.mff.cuni.cz/grants/memorise) corpus, [ELITR Minuting Corpus](https://lindat.mff.cuni.cz/repository/xmlui/handle/11234/1-4692#).
 
 - **Frontend**:
-  - **UI Component Library**: Reusable components for document upload, text visualization, settings, etc.
-  - **Data Visualization Module**: Manages the display of highlighted similarities.
-  
+  - `index.tsx` - the entry point.
+  - `App.tsx` - main view, contains app layout and sets up global keyboard shortcut listeners.
+  - `components` - contains all of the UI components.
+  - `store` - contains all state logic and is composed of several modules.
+    - `index.ts` - root, has source and target document states, sets up similarity and selection stores. Contains `swapDocuments` function as it is a global action.
+    - `document.ts` - individual state of a document: file, content, text search data, loading state.
+    - `selection.ts` - segment selection logic.
+    - `similarity.ts` - similarity and sensitivity logic.
+    - `api.ts` - backend connection and request types.
+  - UI components trigger actions from the store.
+   
 - **Backend**:
-  - **Document Processing Module**: Handles segmentation and processing.
-  - **Similarity Engine**: Provides similarity models.
-  - **API Endpoints**: Handles frontend request, serves document data and similarity scores.
+  - `main.py` - contains all of the backend logic for now.
+    - `/upload-segments` - receives a list of segments and stores a sentence embedding for each. Uses a [`MiniLM-L6` sentence transformer](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2).
+    - `/compute-similarity` - receives segment ids from the source document and computes cosine similarity of their mean embedding to all target embeddings, returns normalized coefficients and segment ids in descending order of their similarity.
+    - `/swap-documents` - swaps source and target embeddings to avoid recomputing them.
 
 ## Installation
 

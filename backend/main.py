@@ -44,7 +44,6 @@ def upload_segments(payload: SegmentsPayload):
 
 # TODO: test similarity computation and embedding correspondence to segments
 # TODO: consider recomputing embeds instead of taking mean
-# FIXME: I have a feeling that swapping doesn't work correctly
 @app.post("/compute-similarity")
 def compute_similarity(req: SimilarityRequest):
     if store["source"]["embeddings"] is None or store["target"]["embeddings"] is None:

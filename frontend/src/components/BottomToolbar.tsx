@@ -29,10 +29,7 @@ const BottomToolbar: Component<IProps> = () => {
       </Row>
       <SelectInput
         label="Mode:"
-        options={[
-          { value: "similarity", label: "Similarity" },
-          { value: "named-entities", label: "Named Entities" },
-        ]}
+        options={[{ value: "similarity", label: "Similarity" }]}
       />
       <Row>
         <Label>Occurrences:</Label>
