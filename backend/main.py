@@ -4,6 +4,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from sentence_transformers import SentenceTransformer, util
 import torch
 from typing import Optional, Dict
+from transformers import AutoTokenizer
+from pathlib import Path
 
 app = FastAPI()
 app.add_middleware(
@@ -77,3 +79,96 @@ def swap_documents():
     store["source"], store["target"] = store["target"], store["source"]
     print("Swapped source and target documents")
     return {"status": "swapped"}
+
+
+tokenizer = AutoTokenizer.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
+
+
+def generate_embed(text: str):
+    tokens = tokenizer.tokenize(text)
+
+    max_tokens = 256
+    if len(tokens) > max_tokens:
+        half_limit = max_tokens // 2
+        truncated_tokens = tokens[: half_limit - 1] + tokens[-half_limit + 1 :]
+        truncated_text = tokenizer.convert_tokens_to_string(truncated_tokens)
+    else:
+        truncated_text = text
+    embedding = model.encode(truncated_text, convert_to_tensor=True)
+    return (
+        torch.tensor(embedding)
+        if not isinstance(embedding, torch.Tensor)
+        else embedding
+    )
+
+
+import pickle
+
+# Path to the file where embeddings will be stored
+EMBEDDINGS_FILE = "court_data_store.pkl"
+
+# Load precomputed embeddings from file if it exists
+try:
+    with open(EMBEDDINGS_FILE, "rb") as f:
+        court_data_store: Dict[str, torch.Tensor] = pickle.load(f)
+    print(f"Loaded {len(court_data_store)} embeddings from {EMBEDDINGS_FILE}")
+except FileNotFoundError:
+    court_data_store: Dict[str, torch.Tensor] = {}
+    print(f"No precomputed embeddings found. Starting fresh.")
+
+
+@app.get("/most-similar-docs")
+def most_similar_docs():
+    print("Computing most similar documents...")
+    court_data = "../data/soudni_data/SupAdmCo/"
+    filenames_path = "../demo/src/filenames.txt"
+
+    # Generate embedding for the reference text
+    reference_text_path = court_data + "000211A___0300073A_prevedeno.txt"
+    reference_text = Path(reference_text_path).read_text()
+    reference_embedding = generate_embed(reference_text)
+
+    # Read filenames from the file
+    filenames = Path(filenames_path).read_text().strip().splitlines()
+
+    distances = []
+    for filename in filenames:
+        print(f"{len(distances)}/{len(filenames)}: Processing file {filename}")
+        file_path = Path(court_data) / filename
+        if not file_path.exists():
+            distances.append({"filename": filename, "error": "File not found"})
+            continue
+
+        # Check if the embedding is already in the store
+        if filename in court_data_store:
+            file_embedding = court_data_store[filename]
+        else:
+            # Read the content of the file
+            file_content = file_path.read_text()
+
+            # Generate embedding for the file content
+            file_embedding = generate_embed(file_content)
+
+            # Store the embedding in the dictionary
+            court_data_store[filename] = file_embedding
+
+        # Compute cosine similarity
+        cosine_similarity = util.cos_sim(reference_embedding, file_embedding).item()
+
+        # Append the result
+        distances.append({"filename": filename, "cosine_similarity": cosine_similarity})
+
+    # Save updated embeddings to file after processing all files
+    if not Path(EMBEDDINGS_FILE).exists():
+        print(f"Saving embeddings to {EMBEDDINGS_FILE}...")
+        with open(EMBEDDINGS_FILE, "wb") as f:
+            pickle.dump(court_data_store, f)
+    print(f"Done processing {len(filenames)} files.")
+
+    # Sort distances by cosine similarity in descending order
+    distances = sorted(
+        distances,
+        key=lambda x: x.get("cosine_similarity", float("-inf")),
+        reverse=True,
+    )
+    return {"distances": distances}
