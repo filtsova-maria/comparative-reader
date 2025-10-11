@@ -29,3 +29,14 @@ export async function apiPost(path: string, body: any) {
   }
   return res.json();
 }
+
+export async function apiGet(path: string) {
+  const res = await fetch(`${API_URL}${path}`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+  });
+  if (!res.ok) {
+    throw new Error(`API request failed with status ${res.status}`);
+  }
+  return res.json();
+}

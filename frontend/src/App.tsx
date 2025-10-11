@@ -1,8 +1,9 @@
-import { type Component } from "solid-js";
+import { onMount, type Component } from "solid-js";
 import { BottomToolbar, Document, IconButton, Tooltip } from "./components";
 import { BsArrowLeftRight } from "solid-icons/bs";
 import { useDocumentStore } from "./store/context";
 import { similarityStore } from "./store/modules/similarity";
+import { apiGet } from "./store/api";
 // TODO: shortcuts for navigation, inputs and actions
 // TODO: update documentation, describe architecture and state management
 const App: Component = () => {
@@ -17,6 +18,38 @@ const App: Component = () => {
       similarityStore.clearSimilarities();
     }
   });
+
+  onMount(async () => {
+    const params = new URLSearchParams(window.location.search);
+    const sourceFileName = params.get("source");
+    const targetFileName = params.get("target");
+
+    if (sourceFileName) {
+      await loadFileFromPath(source, sourceFileName);
+    }
+    if (targetFileName) {
+      await loadFileFromPath(target, targetFileName);
+    }
+  });
+
+  const loadFileFromPath = async (
+    store: typeof source | typeof target,
+    filePath: string,
+  ) => {
+    try {
+      const response = await apiGet(
+        `/fetch-file?file_name=${encodeURIComponent(filePath)}`,
+      );
+
+      const file = new File([response.content], response.filename, {
+        type: "text/plain",
+      });
+      await store.setFile(file);
+      await store.uploadSegments();
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   return (
     <div class="flex flex-col h-screen w-screen bg-neutral-100 p-4">

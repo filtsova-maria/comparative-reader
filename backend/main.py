@@ -6,6 +6,8 @@ import torch
 from typing import Optional, Dict
 from transformers import AutoTokenizer
 from pathlib import Path
+from fastapi.responses import JSONResponse
+
 
 app = FastAPI()
 app.add_middleware(
@@ -117,14 +119,16 @@ except FileNotFoundError:
     print(f"No precomputed embeddings found. Starting fresh.")
 
 
+COURT_DATA = "../data/soudni_data/SupAdmCo/"
+
+
 @app.get("/most-similar-docs")
 def most_similar_docs():
     print("Computing most similar documents...")
-    court_data = "../data/soudni_data/SupAdmCo/"
     filenames_path = "../demo/src/filenames.txt"
 
     # Generate embedding for the reference text
-    reference_text_path = court_data + "000211A___0300073A_prevedeno.txt"
+    reference_text_path = COURT_DATA + "000211A___0300073A_prevedeno.txt"
     reference_text = Path(reference_text_path).read_text()
     reference_embedding = generate_embed(reference_text)
 
@@ -134,7 +138,7 @@ def most_similar_docs():
     distances = []
     for filename in filenames:
         print(f"{len(distances)}/{len(filenames)}: Processing file {filename}")
-        file_path = Path(court_data) / filename
+        file_path = Path(COURT_DATA) / filename
         if not file_path.exists():
             distances.append({"filename": filename, "error": "File not found"})
             continue
@@ -172,3 +176,24 @@ def most_similar_docs():
         reverse=True,
     )
     return {"distances": distances}
+
+
+@app.get("/fetch-file")
+def fetch_file(file_name: str):
+    try:
+        file_path = Path(COURT_DATA) / file_name
+        if not file_path.exists():
+            return JSONResponse(
+                status_code=404, content={"error": f"File not found: {file_name}"}
+            )
+        # Read the file content
+        file_content = file_path.read_text()
+        return {"filename": file_name, "content": file_content}
+    except FileNotFoundError:
+        return JSONResponse(
+            status_code=404, content={"error": f"File not found: {file_name}"}
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=500, content={"error": f"Failed to read file: {str(e)}"}
+        )
