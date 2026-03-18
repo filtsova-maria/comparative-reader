@@ -64,8 +64,7 @@ export function createDocumentStore(type: TDocumentType) {
         return;
       }
       const content = state.content.toLowerCase();
-      const matches = content
-        .split("\n")
+      const matches = splitIntoSentences(content)
         .map((line, index) => (line.includes(term.toLowerCase()) ? index : -1))
         .filter((index) => index !== -1);
 
