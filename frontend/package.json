@@ -1,28 +1,27 @@
 {
-  "name": "vite-template-solid",
-  "version": "0.0.0",
-  "description": "",
+  "name": "comparative-reader-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "packageManager": "pnpm@12.16.1",
   "scripts": {
-    "start": "vite",
     "dev": "vite",
-    "build": "vite build",
-    "serve": "vite preview"
-  },
-  "license": "MIT",
-  "devDependencies": {
-    "autoprefixer": "^10.4.20",
-    "eslint": "^8.52.0",
-    "postcss": "^8.4.49",
-    "prettier": "^3.1.0",
-    "solid-devtools": "^0.29.2",
-    "tailwindcss": "^3.4.16",
-    "typescript": "^4.4.4",
-    "vite": "^5.0.11",
-    "vite-plugin-solid": "^2.8.2"
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -b --pretty"
   },
   "dependencies": {
-    "@solid-primitives/keyboard": "^1.3.3",
-    "solid-icons": "^1.1.0",
-    "solid-js": "^1.8.11"
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.21",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "^4.7.0",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.17",
+    "typescript": "~5.8.3",
+    "vite": "^6.4.1"
   }
 }
