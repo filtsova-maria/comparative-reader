@@ -1,16 +1,89 @@
-function App() {
-  return (
-    <main className="grid min-h-screen place-items-center bg-stone-50 px-6 text-stone-900">
-      <section className="rounded-sm border border-stone-200 bg-white px-10 py-12 text-center shadow-sm">
-        <p className="mb-3 text-sm font-medium tracking-wide text-emerald-700">
-          Comparative Reader
-        </p>
-        <h1 className="font-sans text-4xl font-semibold tracking-tight">
-          Hello, world.
-        </h1>
-      </section>
-    </main>
-  );
+import {
+    Navigate,
+    Route,
+    Routes,
+    useLocation,
+    useNavigate,
+    useSearchParams,
+} from 'react-router'
+import { BrowseView, type BrowseMode, ReaderView } from './views'
+
+function hasSource(searchParams: URLSearchParams) {
+    return Boolean(searchParams.get('s')?.trim())
 }
 
-export default App;
+function RootRedirect() {
+    const [searchParams] = useSearchParams()
+    const location = useLocation()
+
+    return (
+        <Navigate
+            to={{
+                pathname: hasSource(searchParams) ? '/read' : '/pick/source',
+                search: location.search,
+            }}
+            replace
+        />
+    )
+}
+
+function BrowseRoute({ mode }: { mode: BrowseMode }) {
+    const [searchParams] = useSearchParams()
+    const navigate = useNavigate()
+
+    function handleDocumentSelect(docId: string) {
+        const nextSearchParams = new URLSearchParams(searchParams)
+
+        if (mode === 'source') {
+            nextSearchParams.set('s', docId)
+            nextSearchParams.set('a', '0')
+            nextSearchParams.delete('sel')
+        } else {
+            nextSearchParams.set('t', docId)
+            nextSearchParams.set('ta', '0')
+        }
+
+        navigate({
+            pathname: '/read',
+            search: `?${nextSearchParams.toString()}`,
+        })
+    }
+
+    return <BrowseView mode={mode} onDocumentSelect={handleDocumentSelect} />
+}
+
+function ReadRoute() {
+    const [searchParams] = useSearchParams()
+    const location = useLocation()
+
+    if (!hasSource(searchParams)) {
+        return (
+            <Navigate
+                to={{ pathname: '/pick/source', search: location.search }}
+                replace
+            />
+        )
+    }
+
+    return <ReaderView />
+}
+
+function App() {
+    return (
+        <Routes>
+            <Route path="/" element={<RootRedirect />} />
+            <Route
+                path="/pick/source"
+                element={<BrowseRoute mode="source" />}
+            />
+            <Route
+                path="/pick/target"
+                element={<BrowseRoute mode="target" />}
+            />
+            <Route path="/read" element={<ReadRoute />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+    )
+}
+
+export default App
