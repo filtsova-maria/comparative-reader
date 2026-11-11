@@ -39,7 +39,7 @@ Each item in `sentences` contains:
 | `keywords`               | Keywords overlapping the sentence, each with `id`, `label`, and an overlap `weight` from 0 to 1.           |
 
 Each tape's `text_sha256` is the SHA-256 hash of its normalized transcript
-text, useful for detecting stale offsets. Tape-level reports include alignment
+text for detecting stale offsets. Tape-level reports include alignment
 quality measures and warnings; the document-level report summarizes the tape
 and sentence counts and collects any tape warnings.
 
@@ -59,6 +59,32 @@ To create and preview a production build:
 pnpm build
 pnpm preview
 ```
+
+## Mock backend
+
+The FastAPI mock backend that serves testimony data for the frontend. Run the following commands in the project root directory to start it:
+
+```sh
+# (create a virtual environment if there isn't one already)
+# python3 -m venv venv
+. venv/bin/activate
+python -m pip install -r backend/requirements.txt
+python -m uvicorn backend.main:app --reload --port 8000
+```
+
+| Endpoint                                | Behavior                                         |
+| --------------------------------------- | ------------------------------------------------ |
+| `GET /api/testimonies`                  | List testimony summaries, sorted by name.        |
+| `GET /api/testimonies?search=joshua`    | Search names, case-insensitively.                |
+| `GET /api/testimonies?language=English` | Filter by language, case-insensitively.          |
+| `GET /api/languages`                    | List available languages for a filter control.   |
+| `GET /api/testimonies/06052`            | Return the full metadata JSON for one testimony. |
+
+List responses include the string `id` (zero-padded to five digits), name,
+language, experience group, interview date and location, duration, and
+thumbnail URL. The detail endpoint returns the original metadata object.
+
+Interactive API documentation is available at `http://localhost:8000/docs`.
 
 ### URL structure
 
