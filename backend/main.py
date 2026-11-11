@@ -74,6 +74,7 @@ def list_testimonies(
     return sorted(testimonies, key=lambda testimony: testimony.name.casefold())
 
 
+# TODO: find a better way to get the list of languages than iterating over all testimonies when working with real data
 @app.get("/api/languages", response_model=list[str])
 def list_languages() -> list[str]:
     return sorted(
