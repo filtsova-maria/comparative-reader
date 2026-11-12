@@ -3,5 +3,5 @@ export const ReaderView = () => {
         <div className="reader-view">
             <h1>Reader View</h1>
         </div>
-    )
-}
+    );
+};

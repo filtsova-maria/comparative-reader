@@ -1,28 +1,28 @@
-import { useQuery } from '@tanstack/react-query'
-import { useEffect, useState } from 'react'
-import { listLanguages, listTestimonies } from '../api/testimonies'
-import personImage from '../assets/person.png'
+import { useQuery } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+import { listLanguages, listTestimonies } from '../api/testimonies';
+import personImage from '../assets/person.png';
 
-export type BrowseMode = 'source' | 'target'
+export type BrowseMode = 'source' | 'target';
 
 interface BrowseViewProps {
-    mode: BrowseMode
-    onDocumentSelect: (docId: string) => void
+    mode: BrowseMode;
+    onDocumentSelect: (docId: string) => void;
 }
 
 export const BrowseView = ({ mode, onDocumentSelect }: BrowseViewProps) => {
-    const [search, setSearch] = useState('')
-    const [debouncedSearch, setDebouncedSearch] = useState('')
-    const [language, setLanguage] = useState('')
+    const [search, setSearch] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
+    const [language, setLanguage] = useState('');
 
     useEffect(() => {
         const timeout = window.setTimeout(
             () => setDebouncedSearch(search.trim()),
             300,
-        )
+        );
 
-        return () => window.clearTimeout(timeout)
-    }, [search])
+        return () => window.clearTimeout(timeout);
+    }, [search]);
 
     const testimoniesQuery = useQuery({
         queryKey: [
@@ -37,11 +37,11 @@ export const BrowseView = ({ mode, onDocumentSelect }: BrowseViewProps) => {
                 },
                 signal,
             ),
-    })
+    });
     const languagesQuery = useQuery({
         queryKey: ['testimony-languages'],
         queryFn: ({ signal }) => listLanguages(signal),
-    })
+    });
 
     // TODO: implement pagination
     // TODO: implement OpenSearch API fulltext search for testimonies
@@ -147,5 +147,5 @@ export const BrowseView = ({ mode, onDocumentSelect }: BrowseViewProps) => {
                     </ul>
                 ))}
         </div>
-    )
-}
+    );
+};

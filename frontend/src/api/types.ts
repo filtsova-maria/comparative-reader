@@ -1,5 +1,5 @@
-import type { components, operations } from './schema'
+import type { components, operations } from './schema';
 
 export type ListTestimonyParams =
-    operations['list_testimonies_api_testimonies_get']['parameters']['query']
-export type TestimonySummary = components['schemas']['TestimonySummary']
+    operations['list_testimonies_api_testimonies_get']['parameters']['query'];
+export type TestimonySummary = components['schemas']['TestimonySummary'];

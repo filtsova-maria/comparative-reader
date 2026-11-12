@@ -1,2 +1,2 @@
-export { BrowseView, type BrowseMode } from './BrowseView'
-export { ReaderView } from './ReaderView'
+export { BrowseView, type BrowseMode } from './BrowseView';
+export { ReaderView } from './ReaderView';
