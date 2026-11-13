@@ -72,17 +72,20 @@ python -m pip install -r backend/requirements.txt
 python -m uvicorn backend.main:app --reload --port 8000
 ```
 
-| Endpoint                                | Behavior                                         |
-| --------------------------------------- | ------------------------------------------------ |
-| `GET /api/testimonies`                  | List testimony summaries, sorted by name.        |
-| `GET /api/testimonies?search=joshua`    | Search names, case-insensitively.                |
-| `GET /api/testimonies?language=English` | Filter by language, case-insensitively.          |
-| `GET /api/languages`                    | List available languages for a filter control.   |
-| `GET /api/testimonies/06052`            | Return the full metadata JSON for one testimony. |
+| Endpoint                                | Behavior                                                     |
+| --------------------------------------- | ------------------------------------------------------------ |
+| `GET /api/testimonies`                  | List testimony summaries, sorted by name.                    |
+| `GET /api/testimonies?search=joshua`    | Search names, case-insensitively.                            |
+| `GET /api/testimonies?language=English` | Filter by language, case-insensitively.                      |
+| `GET /api/languages`                    | List available languages for a filter control.               |
+| `GET /api/testimonies/06052`            | Return the full metadata JSON for a testimony.               |
+| `GET /api/testimonies/06052/data`       | Return the processed transcript sentences for one testimony. |
 
 List responses include the string `id` (zero-padded to five digits), name,
 language, experience group, interview date and location, duration, and
 thumbnail URL. The detail endpoint returns the original metadata object.
+The data endpoint returns the corresponding `data/processed/*.sentences.json`
+document.
 
 Interactive API documentation is available at `http://localhost:8000/docs`.
 
@@ -103,10 +106,10 @@ Workspace URLs use these query parameters:
 | Parameter | Meaning                                                                                       |
 | --------- | --------------------------------------------------------------------------------------------- |
 | `s`       | Source document ID.                                                                           |
-| `sa`      | Source reading anchor (integer; defaults to `0` when omitted or invalid).                     |
+| `sa`      | Source sentence index (zero-based; defaults to `0` when omitted or invalid).                  |
 | `sel`     | Optional selected source-text range as `start-end` character offsets, with the end exclusive. |
 | `t`       | Target document ID.                                                                           |
-| `ta`      | Target reading anchor (integer; defaults to `0` when omitted or invalid).                     |
+| `ta`      | Target sentence index (zero-based; defaults to `0` when omitted or invalid).                  |
 
-For example, `/read?s=06052&a=120&sel=120-180&t=38594&ta=45` opens
+For example, `/read?s=06052&sa=120&sel=120-180&t=38594&ta=45` opens
 the reader with source document 06052 and target document 38594 scrolled to their anchor positions. The root route uses the `s` parameter to decide whether to redirect to the reader or the document browser.

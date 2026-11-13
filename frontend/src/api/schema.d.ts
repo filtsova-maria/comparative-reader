@@ -55,6 +55,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    '/api/testimonies/{testimony_id}/data': {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Testimony Data */
+        get: operations['get_testimony_data_api_testimonies__testimony_id__data_get'];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -63,6 +80,63 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components['schemas']['ValidationError'][];
+        };
+        /** Keyword */
+        Keyword: {
+            /** Id */
+            id: number;
+            /** Label */
+            label: string;
+            /** Weight */
+            weight: number;
+        };
+        /** Sentence */
+        Sentence: {
+            /** Idx */
+            idx: number;
+            /** Tape */
+            tape: number;
+            /** Start Char */
+            start_char: number;
+            /** End Char */
+            end_char: number;
+            /** Text */
+            text: string;
+            /** Start Tc */
+            start_tc: number;
+            /** End Tc */
+            end_tc: number;
+            /**
+             * Tc Source
+             * @enum {string}
+             */
+            tc_source: 'matched' | 'interpolated' | 'no_tokens';
+            /** Matched Ratio */
+            matched_ratio: number;
+            /** Keywords */
+            keywords: components['schemas']['Keyword'][];
+        };
+        /** TestimonyBio */
+        TestimonyBio: {
+            /** Fullname */
+            FullName: string;
+        } & {
+            [key: string]: unknown;
+        };
+        /** TestimonyData */
+        TestimonyData: {
+            /** Document Id */
+            document_id: string;
+            /** Tapes */
+            tapes: number;
+            /** Sentences */
+            sentences: components['schemas']['Sentence'][];
+        };
+        /** TestimonyMetadata */
+        TestimonyMetadata: {
+            Bio: components['schemas']['TestimonyBio'];
+        } & {
+            [key: string]: unknown;
         };
         /** TestimonySummary */
         TestimonySummary: {
@@ -174,9 +248,38 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    'application/json': {
-                        [key: string]: unknown;
-                    };
+                    'application/json': components['schemas']['TestimonyMetadata'];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['HTTPValidationError'];
+                };
+            };
+        };
+    };
+    get_testimony_data_api_testimonies__testimony_id__data_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                testimony_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['TestimonyData'];
                 };
             };
             /** @description Validation Error */

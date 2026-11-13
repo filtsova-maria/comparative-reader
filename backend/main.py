@@ -1,13 +1,13 @@
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 METADATA_DIR = Path(__file__).resolve().parents[1] / "data" / "metadata"
-
+DATA_DIR = Path(__file__).resolve().parents[1] / "data" / "processed"
 
 class TestimonySummary(BaseModel):
     id: str
@@ -19,6 +19,73 @@ class TestimonySummary(BaseModel):
     duration: str | None
     thumbnail_url: str | None
 
+
+class TestimonyBio(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    FullName: str
+
+
+class TestimonyMetadata(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    Bio: TestimonyBio
+
+
+class Keyword(BaseModel):
+    id: int
+    label: str
+    weight: float
+
+
+class Sentence(BaseModel):
+    idx: int
+    tape: int
+    start_char: int
+    end_char: int
+    text: str
+    start_tc: float
+    end_tc: float
+    tc_source: Literal["matched", "interpolated", "no_tokens"]
+    matched_ratio: float
+    keywords: list[Keyword]
+
+
+class TapeSource(BaseModel):
+    txt: str
+    vtt: str
+
+
+class TapeReport(BaseModel):
+    token_match_ratio: float
+    longest_unmatched_run_words: int
+    sentences: int
+    sentences_first_word_interpolated: int
+    sentences_without_words: int
+    sentences_with_keywords: int
+    max_jump_s: float
+    last_end_tc: float | None
+    tape_duration_s: float
+    warnings: list[str]
+
+
+class ProcessedTape(BaseModel):
+    tape: int
+    text_sha256: str
+    source: TapeSource
+    report: TapeReport
+
+
+class DocumentReport(BaseModel):
+    tapes: int
+    sentences: int
+    warnings: list[str]
+
+
+class TestimonyData(BaseModel):
+    document_id: str
+    tapes: int
+    sentences: list[Sentence]
 
 app = FastAPI(title="Comparative Reader Mock API", version="0.1.0")
 app.add_middleware(
@@ -36,6 +103,13 @@ def load_metadata() -> list[dict[str, Any]]:
     return records
 
 
+def load_testimony_metadata(testimony_id: str) -> dict[str, Any]:
+    path = METADATA_DIR / f"{int(testimony_id)}.json"
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="Testimony not found")
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
 def to_summary(metadata: dict[str, Any]) -> TestimonySummary:
     testimony = metadata["Testimony"]
     bio = metadata["Bio"]
@@ -48,6 +122,19 @@ def to_summary(metadata: dict[str, Any]) -> TestimonySummary:
         location=testimony.get("InterviewLocation"),
         duration=testimony.get("Length"),
         thumbnail_url=testimony.get("TestimonyIconImageURL"),
+    )
+
+def load_data(testimony_id: str) -> dict[str, Any]:
+    path = DATA_DIR / f"{testimony_id.zfill(5)}.sentences.json"
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="Testimony data not found")
+    return json.loads(path.read_text(encoding="utf-8"))
+
+def to_testimony_contents(data: dict[str, Any]) -> TestimonyData:
+    return TestimonyData(
+        document_id=data["document_id"],
+        tapes=data["report"]["tapes"],
+        sentences=[Sentence.model_validate(sentence) for sentence in data["sentences"]]
     )
 
 
@@ -83,13 +170,19 @@ def list_languages() -> list[str]:
     )
 
 
-@app.get("/api/testimonies/{testimony_id}")
-def get_testimony_metadata(testimony_id: str) -> dict[str, Any]:
+@app.get(
+    "/api/testimonies/{testimony_id}",
+    response_model=TestimonyMetadata,
+)
+def get_testimony_metadata(testimony_id: str) -> TestimonyMetadata:
     if not testimony_id.isdecimal():
         raise HTTPException(status_code=404, detail="Testimony not found")
 
-    requested_id = testimony_id.zfill(5)
-    for metadata in load_metadata():
-        if to_summary(metadata).id == requested_id:
-            return metadata
-    raise HTTPException(status_code=404, detail="Testimony not found")
+    return TestimonyMetadata.model_validate(load_testimony_metadata(testimony_id))
+
+
+@app.get("/api/testimonies/{testimony_id}/data", response_model=TestimonyData)
+def get_testimony_data(testimony_id: str) -> TestimonyData:
+    if not testimony_id.isdecimal():
+        raise HTTPException(status_code=404, detail="Testimony data not found")
+    return to_testimony_contents(load_data(testimony_id))

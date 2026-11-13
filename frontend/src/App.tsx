@@ -36,7 +36,7 @@ function BrowseRoute({ mode }: { mode: BrowseMode }) {
 
         if (mode === 'source') {
             nextSearchParams.set('s', docId);
-            nextSearchParams.set('a', '0');
+            nextSearchParams.set('sa', '0');
             nextSearchParams.delete('sel');
         } else {
             nextSearchParams.set('t', docId);

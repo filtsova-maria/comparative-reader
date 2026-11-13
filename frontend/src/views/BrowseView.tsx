@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
-import { listLanguages, listTestimonies } from '../api/testimonies';
+import { listLanguages, listTestimonyMetadata } from '../api/testimonies';
 import personImage from '../assets/person.png';
 
 export type BrowseMode = 'source' | 'target';
@@ -30,7 +30,7 @@ export const BrowseView = ({ mode, onDocumentSelect }: BrowseViewProps) => {
             { search: debouncedSearch, language },
         ] as const,
         queryFn: ({ signal }) =>
-            listTestimonies(
+            listTestimonyMetadata(
                 {
                     search: debouncedSearch || undefined,
                     language: language || undefined,

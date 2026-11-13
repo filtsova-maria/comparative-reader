@@ -1,7 +1,12 @@
 import { serverUrl } from './const';
-import type { ListTestimonyParams, TestimonySummary } from './types';
+import type {
+    ListTestimonyParams,
+    TestimonyData,
+    TestimonyMetadata,
+    TestimonySummary,
+} from './types';
 
-export async function listTestimonies(
+export async function listTestimonyMetadata(
     params: ListTestimonyParams = {},
     signal?: AbortSignal,
 ): Promise<TestimonySummary[]> {
@@ -35,6 +40,42 @@ export async function listLanguages(signal?: AbortSignal): Promise<string[]> {
     if (!response.ok) {
         throw new Error(
             `Failed to fetch languages: ${response.status} ${response.statusText}`,
+        );
+    }
+
+    return response.json();
+}
+
+export async function getTestimonyMetadata(
+    testimonyId: string,
+    signal?: AbortSignal,
+): Promise<TestimonyMetadata> {
+    const response = await fetch(
+        `${serverUrl}/api/testimonies/${encodeURIComponent(testimonyId)}`,
+        { signal },
+    );
+
+    if (!response.ok) {
+        throw new Error(
+            `Failed to fetch testimony metadata: ${response.status} ${response.statusText}`,
+        );
+    }
+
+    return response.json();
+}
+
+export async function getTestimonyData(
+    testimonyId: string,
+    signal?: AbortSignal,
+): Promise<TestimonyData> {
+    const response = await fetch(
+        `${serverUrl}/api/testimonies/${encodeURIComponent(testimonyId)}/data`,
+        { signal },
+    );
+
+    if (!response.ok) {
+        throw new Error(
+            `Failed to fetch testimony data: ${response.status} ${response.statusText}`,
         );
     }
 
