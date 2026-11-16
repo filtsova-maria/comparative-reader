@@ -96,7 +96,7 @@ app.add_middleware(
 )
 
 
-def load_metadata() -> list[dict[str, Any]]:
+def load_all_metadata() -> list[dict[str, Any]]:
     records = []
     for path in sorted(METADATA_DIR.glob("*.json")):
         records.append(json.loads(path.read_text(encoding="utf-8")))
@@ -124,13 +124,13 @@ def to_summary(metadata: dict[str, Any]) -> TestimonySummary:
         thumbnail_url=testimony.get("TestimonyIconImageURL"),
     )
 
-def load_data(testimony_id: str) -> dict[str, Any]:
+def load_testimony_data(testimony_id: str) -> dict[str, Any]:
     path = DATA_DIR / f"{testimony_id.zfill(5)}.sentences.json"
     if not path.is_file():
         raise HTTPException(status_code=404, detail="Testimony data not found")
     return json.loads(path.read_text(encoding="utf-8"))
 
-def to_testimony_contents(data: dict[str, Any]) -> TestimonyData:
+def to_testimony_data(data: dict[str, Any]) -> TestimonyData:
     return TestimonyData(
         document_id=data["document_id"],
         tapes=data["report"]["tapes"],
@@ -139,11 +139,11 @@ def to_testimony_contents(data: dict[str, Any]) -> TestimonyData:
 
 
 @app.get("/api/testimonies", response_model=list[TestimonySummary])
-def list_testimonies(
+def list_testimony_summaries(
     search: str | None = Query(default=None),
     language: str | None = Query(default=None),
 ) -> list[TestimonySummary]:
-    testimonies = [to_summary(metadata) for metadata in load_metadata()]
+    testimonies = [to_summary(metadata) for metadata in load_all_metadata()]
     if search and (query := search.strip()):
         query = query.casefold()
         testimonies = [
@@ -165,7 +165,7 @@ def list_testimonies(
 @app.get("/api/languages", response_model=list[str])
 def list_languages() -> list[str]:
     return sorted(
-        {to_summary(metadata).language for metadata in load_metadata()},
+        {to_summary(metadata).language for metadata in load_all_metadata()},
         key=str.casefold,
     )
 
@@ -185,4 +185,4 @@ def get_testimony_metadata(testimony_id: str) -> TestimonyMetadata:
 def get_testimony_data(testimony_id: str) -> TestimonyData:
     if not testimony_id.isdecimal():
         raise HTTPException(status_code=404, detail="Testimony data not found")
-    return to_testimony_contents(load_data(testimony_id))
+    return to_testimony_data(load_testimony_data(testimony_id))
