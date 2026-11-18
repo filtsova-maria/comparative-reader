@@ -85,6 +85,7 @@ class DocumentReport(BaseModel):
 class TestimonyData(BaseModel):
     document_id: str
     tapes: int
+    tape_durations: dict[int, float]
     sentences: list[Sentence]
 
 app = FastAPI(title="Comparative Reader Mock API", version="0.1.0")
@@ -134,6 +135,10 @@ def to_testimony_data(data: dict[str, Any]) -> TestimonyData:
     return TestimonyData(
         document_id=data["document_id"],
         tapes=data["report"]["tapes"],
+        tape_durations={
+            tape["tape"]: tape["report"]["tape_duration_s"]
+            for tape in data["tapes"]
+        },
         sentences=[Sentence.model_validate(sentence) for sentence in data["sentences"]]
     )
 

@@ -14,6 +14,7 @@ from main import (
     list_testimony_summaries,
     search_in_testimony,
     search_testimonies,
+    to_testimony_data,
 )
 
 
@@ -39,6 +40,24 @@ class FakeClient:
 
 
 class OpenSearchBackendTests(unittest.TestCase):
+    def test_to_testimony_data_includes_tape_durations(self) -> None:
+        testimony = to_testimony_data(
+            {
+                "document_id": "06052",
+                "report": {"tapes": 1},
+                "tapes": [
+                    {"tape": 1, "report": {"tape_duration_s": 1829.0}},
+                    {"tape": 2, "report": {"tape_duration_s": 1834.0}},
+                ],
+                "sentences": [],
+            }
+        )
+
+        self.assertEqual(
+            testimony.tape_durations,
+            {1: 1829.0, 2: 1834.0},
+        )
+
     def test_create_client_uses_opensearch_default_http_port(self) -> None:
         with (
             patch.dict("os.environ", {"OPENSEARCH_URL": "http://search"}),

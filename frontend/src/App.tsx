@@ -30,6 +30,9 @@ function RootRedirect() {
 function BrowseRoute({ mode }: { mode: BrowseMode }) {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
+    const excludedDocIds = ['s', 't']
+        .map((param) => searchParams.get(param)?.trim())
+        .filter((docId): docId is string => Boolean(docId));
 
     function handleDocumentSelect(docId: string) {
         const nextSearchParams = new URLSearchParams(searchParams);
@@ -49,7 +52,13 @@ function BrowseRoute({ mode }: { mode: BrowseMode }) {
         });
     }
 
-    return <BrowseView mode={mode} onDocumentSelect={handleDocumentSelect} />;
+    return (
+        <BrowseView
+            mode={mode}
+            excludedDocIds={excludedDocIds}
+            onDocumentSelect={handleDocumentSelect}
+        />
+    );
 }
 
 function ReadRoute() {

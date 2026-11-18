@@ -129,6 +129,10 @@ export interface components {
             document_id: string;
             /** Tapes */
             tapes: number;
+            /** Tape Durations */
+            tape_durations: {
+                [key: string]: number;
+            };
             /** Sentences */
             sentences: components['schemas']['Sentence'][];
         };
