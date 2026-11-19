@@ -16,6 +16,9 @@
         "generate:api": "openapi-typescript http://127.0.0.1:8000/openapi.json -o src/api/schema.d.ts"
     },
     "dependencies": {
+        "@fortawesome/free-regular-svg-icons": "^7.3.1",
+        "@fortawesome/free-solid-svg-icons": "^7.3.1",
+        "@fortawesome/react-fontawesome": "^3.5.0",
         "@tanstack/react-query": "^5.107.1",
         "react": "^19.1.0",
         "react-dom": "^19.1.0",
