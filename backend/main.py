@@ -88,13 +88,38 @@ class TestimonyData(BaseModel):
     tape_durations: dict[int, float]
     sentences: list[Sentence]
 
-app = FastAPI(title="Comparative Reader Mock API", version="0.1.0")
+os_client = create_client()
+
+app = FastAPI(title="Comparative Reader API", version="0.2.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
     allow_methods=["GET"],
     allow_headers=["*"],
 )
+
+
+def _require_search_index() -> None:
+    if not os_client.indices.exists(index=TESTIMONY_INDEX):
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "OpenSearch search index is not initialized. "
+                "Run `python -m backend.index_opensearch`."
+            ),
+        )
+
+
+def _raise_on_msearch_errors(responses: list[dict[str, Any]]) -> None:
+    for response in responses:
+        if "error" not in response:
+            continue
+        error = response["error"]
+        reason = error.get("reason", str(error)) if isinstance(error, dict) else error
+        raise HTTPException(
+            status_code=503,
+            detail=f"OpenSearch search failed: {reason}",
+        )
 
 
 def load_all_metadata() -> list[dict[str, Any]]:
