@@ -4,20 +4,32 @@ from typing import Any, Literal
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
+
+from backend.opensearch_backend import (
+    HIGHLIGHT,
+    TESTIMONY_INDEX,
+    create_client,
+    parse_ranges,
+    text_query,
+    word_offset_at_utf16,
+)
 
 METADATA_DIR = Path(__file__).resolve().parents[1] / "data" / "metadata"
 DATA_DIR = Path(__file__).resolve().parents[1] / "data" / "processed"
 
-class TestimonySummary(BaseModel):
+class TestimonySummaryFields(BaseModel):
     id: str
     name: str
     language: str
-    experience: str | None
     interview_date: str | None
     location: str | None
     duration: str | None
     thumbnail_url: str | None
+
+
+class TestimonySummary(TestimonySummaryFields):
+    pass
 
 
 class TestimonyBio(BaseModel):
@@ -88,6 +100,39 @@ class TestimonyData(BaseModel):
     tape_durations: dict[int, float]
     sentences: list[Sentence]
 
+
+class Range(BaseModel):
+    start: int
+    end: int
+
+
+class DocHit(BaseModel):
+    idx: int
+    tape: int
+    text: str
+    anchor: int
+    ranges: list[Range]
+
+
+class DocSearchResponse(BaseModel):
+    total_sentences: int
+    hits: list[DocHit]
+
+
+class Snippet(BaseModel):
+    idx: int
+    tape: int
+    text: str
+    anchor: int
+    ranges: list[Range]
+
+
+class TestimonySearchResult(TestimonySummaryFields):
+    name_match: bool = False
+    transcript_hits: int = 0
+    snippets: list[Snippet] = Field(default_factory=list)
+
+
 os_client = create_client()
 
 app = FastAPI(title="Comparative Reader API", version="0.2.0")
@@ -143,7 +188,6 @@ def to_summary(metadata: dict[str, Any]) -> TestimonySummary:
         id=f"{int(testimony['IntCode']):05d}",
         name=bio["FullName"],
         language=testimony["LanguageLabel"],
-        experience=testimony.get("ExperienceGroups"),
         interview_date=testimony.get("InterviewDate"),
         location=testimony.get("InterviewLocation"),
         duration=testimony.get("Length"),
@@ -172,6 +216,7 @@ def to_testimony_data(data: dict[str, Any]) -> TestimonyData:
 def list_testimony_summaries(
     search: str | None = Query(default=None),
     language: str | None = Query(default=None),
+    location: str | None = Query(default=None),
 ) -> list[TestimonySummary]:
     testimonies = [to_summary(metadata) for metadata in load_all_metadata()]
     if search and (query := search.strip()):
@@ -181,14 +226,225 @@ def list_testimony_summaries(
             for testimony in testimonies
             if query in testimony.name.casefold()
         ]
-    if language and (selected_language := language.strip()):
+    selected_language = language.strip() if language else ""
+    if selected_language:
         selected_language = selected_language.casefold()
         testimonies = [
             testimony
             for testimony in testimonies
             if testimony.language.casefold() == selected_language
         ]
+    selected_location = location.strip().casefold() if location else ""
+    if selected_location:
+        testimonies = [
+            testimony
+            for testimony in testimonies
+            if selected_location in (testimony.location or "").casefold()
+        ]
     return sorted(testimonies, key=lambda testimony: testimony.name.casefold())
+
+
+@app.get("/api/search/testimonies", response_model=list[TestimonySearchResult])
+def search_testimonies(
+    search: str = Query(min_length=1, max_length=200),
+    language: str | None = Query(default=None),
+    location: str | None = Query(default=None),
+) -> list[TestimonySearchResult]:
+    _require_search_index()
+    filters: list[dict[str, Any]] = []
+    selected_language = language.strip() if language else ""
+    if selected_language:
+        filters.append({"term": {"language": selected_language}})
+    selected_location = location.strip() if location else ""
+    if selected_location:
+        filters.append(
+            {
+                "multi_match": {
+                    "query": selected_location,
+                    "type": "bool_prefix",
+                    "fields": ["location_search"],
+                    "operator": "and",
+                }
+            }
+        )
+
+    query = search.strip()
+    if not query:
+        return []
+    sentence_hits = {
+        "name": "sentences",
+        "size": 3,
+        "sort": [{"idx": "asc"}],
+        "_source": ["idx", "tape", "text", "word_start"],
+        "highlight": HIGHLIGHT,
+    }
+    name_search = {
+        "size": 20,
+        "query": {
+            "bool": {
+                "filter": filters,
+                "must": [
+                    {
+                        "bool": {
+                            "should": [
+                                {
+                                    "multi_match": {
+                                        "query": query,
+                                        "type": "bool_prefix",
+                                        "fields": [
+                                            "name",
+                                            "name._2gram",
+                                            "name._3gram",
+                                            "metadata_text",
+                                        ],
+                                        "operator": "and",
+                                    }
+                                },
+                                {
+                                    "match": {
+                                        "metadata_text": {
+                                            "query": query,
+                                            "operator": "and",
+                                            "fuzziness": "AUTO",
+                                        }
+                                    }
+                                },
+                            ],
+                            "minimum_should_match": 1,
+                        }
+                    }
+                ],
+            }
+        },
+        "collapse": {"field": "document_id", "inner_hits": sentence_hits},
+    }
+    transcript_search = {
+        "size": 30,
+        "query": {
+            "bool": {
+                "filter": filters,
+                "must": [text_query(query)],
+            }
+        },
+        "collapse": {
+            "field": "document_id",
+            "inner_hits": {
+                **sentence_hits,
+                "sort": [{"_score": "desc"}, {"idx": "asc"}],
+            },
+        },
+    }
+    responses = os_client.msearch(
+        body=[
+            {"index": TESTIMONY_INDEX},
+            name_search,
+            {"index": TESTIMONY_INDEX},
+            transcript_search,
+        ]
+    )["responses"]
+    _raise_on_msearch_errors(responses)
+    name_response, transcript_response = responses
+
+    results: dict[str, TestimonySearchResult] = {}
+    for hit in name_response["hits"]["hits"]:
+        source = hit["_source"]
+        document_id = source["document_id"]
+        inner_hits = hit["inner_hits"]["sentences"]["hits"]
+        results[document_id] = TestimonySearchResult.model_validate(
+            {
+                **source,
+                "id": document_id,
+                "name_match": True,
+                "snippets": _to_snippets(inner_hits),
+            }
+        )
+
+    for hit in transcript_response["hits"]["hits"]:
+        source = hit["_source"]
+        document_id = source["document_id"]
+        testimony = results.get(document_id)
+        if testimony is None:
+            testimony = TestimonySearchResult.model_validate(
+                {**source, "id": document_id}
+            )
+            results[document_id] = testimony
+        inner_hits = hit["inner_hits"]["sentences"]["hits"]
+        testimony.transcript_hits = inner_hits["total"]["value"]
+        testimony.snippets = _to_snippets(inner_hits)
+    return list(results.values())
+
+
+def _to_snippets(inner_hits: dict[str, Any]) -> list[Snippet]:
+    """
+    Convert OpenSearch query hits to a list of Snippets with appended data necessary for frontend rendering.
+    """
+    snippets = []
+    for sentence in inner_hits["hits"]:
+        source = sentence["_source"]
+        ranges = parse_ranges(sentence.get("highlight", {}).get("text", [""])[0])
+        first_match = ranges[0][0] if ranges else 0
+        snippets.append(
+            Snippet(
+                idx=source["idx"],
+                tape=source["tape"],
+                text=source["text"],
+                anchor=source["word_start"]
+                + word_offset_at_utf16(source["text"], first_match),
+                ranges=[Range(start=start, end=end) for start, end in ranges],
+            )
+        )
+    return snippets
+
+@app.get(
+    "/api/search/testimonies/{testimony_id}",
+    response_model=DocSearchResponse,
+)
+def search_in_testimony(
+    testimony_id: str,
+    q: str = Query(min_length=1, max_length=200),
+) -> DocSearchResponse:
+    if not testimony_id.isdecimal():
+        raise HTTPException(status_code=404, detail="Testimony not found")
+    _require_search_index()
+
+    response = os_client.search(
+        index=TESTIMONY_INDEX,
+        body={
+            "size": 5000,
+            "track_total_hits": True,
+            "_source": ["idx", "tape", "text", "word_start"],
+            "sort": [{"idx": "asc"}],
+            "query": {
+                "bool": {
+                    "filter": [
+                        {"term": {"document_id": f"{int(testimony_id):05d}"}}
+                    ],
+                    "must": [text_query(q)],
+                }
+            },
+            "highlight": HIGHLIGHT,
+        },
+    )
+    hits: list[DocHit] = []
+    for hit in response["hits"]["hits"]:
+        source = hit["_source"]
+        ranges = parse_ranges(hit.get("highlight", {}).get("text", [""])[0])
+        occurrences = ranges or [(0, 0)]
+        for start, end in occurrences:
+            hits.append(
+                DocHit(
+                    idx=source["idx"],
+                    tape=source["tape"],
+                    text=source["text"],
+                    anchor=source["word_start"]
+                    + word_offset_at_utf16(source["text"], start),
+                    ranges=[Range(start=start, end=end)] if ranges else [],
+                )
+            )
+    return DocSearchResponse(
+        total_sentences=response["hits"]["total"]["value"],
+        hits=hits,
+    )
 
 
 # TODO: find a better way to get the list of languages than iterating over all testimonies when working with real data
