@@ -95,8 +95,8 @@ export const DocumentPane = ({
             {hasCurrentSearch && searchQuery.isSuccess && (
                 <div className="mb-4">
                     <p role="status" className="mb-2">
-                        {searchQuery.data.hits.length} occurrences in{' '}
-                        {searchQuery.data.total_sentences} sentences
+                        {searchQuery.data.total_sentences} matched sentence
+                        {searchQuery.data.total_sentences > 1 && 's'}
                     </p>
                     {searchQuery.data.hits.length === 0 ? (
                         <p>No occurrences found.</p>

@@ -30,8 +30,13 @@ describe('DocumentText', () => {
                 layout={layout}
                 idPrefix="source"
                 searchHits={[
-                    { idx: 4, ranges: [{ start: 3, end: 5 }] },
-                    { idx: 4, ranges: [{ start: 9, end: 11 }] },
+                    {
+                        idx: 4,
+                        ranges: [
+                            { start: 3, end: 5 },
+                            { start: 9, end: 11 },
+                        ],
+                    },
                 ]}
             />,
         );

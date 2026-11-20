@@ -453,7 +453,7 @@ class OpenSearchBackendTests(unittest.TestCase):
         self.assertEqual(error.exception.status_code, 503)
         self.assertIn("index or query error", error.exception.detail)
 
-    def test_document_search_returns_each_occurrence_with_word_anchor(self) -> None:
+    def test_document_search_groups_occurrences_by_sentence(self) -> None:
         fake_os = Mock()
         fake_os.search.return_value = {
             "hits": {
@@ -479,14 +479,14 @@ class OpenSearchBackendTests(unittest.TestCase):
             response = search_in_testimony("6052", "hom")
 
         self.assertEqual(response.total_sentences, 1)
-        self.assertEqual([hit.idx for hit in response.hits], [8, 8])
-        self.assertEqual([hit.anchor for hit in response.hits], [11, 12])
+        self.assertEqual([hit.idx for hit in response.hits], [8])
+        self.assertEqual([hit.anchor for hit in response.hits], [11])
         self.assertEqual(
             [
                 [(item.start, item.end) for item in hit.ranges]
                 for hit in response.hits
             ],
-            [[(3, 7)], [(8, 12)]],
+            [[(3, 7), (8, 12)]],
         )
         query_body = fake_os.search.call_args.kwargs["body"]
         self.assertEqual(fake_os.search.call_args.kwargs["index"], TESTIMONY_INDEX)

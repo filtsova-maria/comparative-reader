@@ -428,18 +428,19 @@ def search_in_testimony(
     for hit in response["hits"]["hits"]:
         source = hit["_source"]
         ranges = parse_ranges(hit.get("highlight", {}).get("text", [""])[0])
-        occurrences = ranges or [(0, 0)]
-        for start, end in occurrences:
-            hits.append(
-                DocHit(
-                    idx=source["idx"],
-                    tape=source["tape"],
-                    text=source["text"],
-                    anchor=source["word_start"]
-                    + word_offset_at_utf16(source["text"], start),
-                    ranges=[Range(start=start, end=end)] if ranges else [],
-                )
+        first_match = ranges[0][0] if ranges else 0
+        hits.append(
+            DocHit(
+                idx=source["idx"],
+                tape=source["tape"],
+                text=source["text"],
+                anchor=source["word_start"]
+                + word_offset_at_utf16(source["text"], first_match),
+                ranges=[
+                    Range(start=start, end=end) for start, end in ranges
+                ],
             )
+        )
     return DocSearchResponse(
         total_sentences=response["hits"]["total"]["value"],
         hits=hits,
