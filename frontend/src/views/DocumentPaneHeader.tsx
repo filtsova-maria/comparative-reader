@@ -12,7 +12,6 @@ interface DocumentPaneHeaderProps {
     idPrefix: string;
     search: string;
     onSearchChange: (value: string) => void;
-    onSearchFocus: () => void;
     secondaryBrowsePath?: string;
     secondaryBrowseLabel?: string;
 }
@@ -48,7 +47,6 @@ export const DocumentPaneHeader = ({
     idPrefix,
     search,
     onSearchChange,
-    onSearchFocus,
     secondaryBrowsePath,
     secondaryBrowseLabel,
 }: DocumentPaneHeaderProps) => {
@@ -83,10 +81,10 @@ export const DocumentPaneHeader = ({
                 </label>
                 <input
                     id={`${idPrefix}-document-search`}
+                    data-search-popover-trigger
                     type="search"
                     value={search}
                     onChange={(event) => onSearchChange(event.target.value)}
-                    onFocus={onSearchFocus}
                     placeholder="Search document"
                     className="min-h-10 min-w-0 flex-1 bg-white px-3 py-2 font-inherit text-inherit"
                 />
