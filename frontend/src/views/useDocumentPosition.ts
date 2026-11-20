@@ -19,6 +19,8 @@ interface UseDocumentPositionProps {
     onAnchorChange: (anchor: number) => void;
 }
 
+const ANCHOR_SYNC_DEBOUNCE_MS = 200;
+
 export function useDocumentPosition({
     layout,
     anchor,
@@ -28,6 +30,10 @@ export function useDocumentPosition({
     const containerRef = useRef<HTMLDivElement>(null);
     const wordElementsRef = useRef<HTMLElement[]>([]);
     const activeWordRef = useRef<ActiveWord | null>(null);
+    const pendingAnchorRef = useRef<number | null>(null);
+    const anchorSyncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+        null,
+    );
     const [currentPosition, setCurrentPosition] =
         useState<DocumentPosition | null>(() => {
             const firstWord = layout.words[0];
@@ -36,8 +42,33 @@ export function useDocumentPosition({
                 : null;
         });
 
+    const cancelPendingAnchorSync = useCallback(() => {
+        if (anchorSyncTimeoutRef.current !== null) {
+            clearTimeout(anchorSyncTimeoutRef.current);
+            anchorSyncTimeoutRef.current = null;
+        }
+        pendingAnchorRef.current = null;
+    }, []);
+    const scheduleAnchorSync = useCallback(
+        (wordIndex: number) => {
+            pendingAnchorRef.current = wordIndex;
+            if (anchorSyncTimeoutRef.current !== null) {
+                clearTimeout(anchorSyncTimeoutRef.current);
+            }
+            anchorSyncTimeoutRef.current = setTimeout(() => {
+                anchorSyncTimeoutRef.current = null;
+                const pendingAnchor = pendingAnchorRef.current;
+                pendingAnchorRef.current = null;
+                if (pendingAnchor !== null) {
+                    onAnchorChange(pendingAnchor);
+                }
+            }, ANCHOR_SYNC_DEBOUNCE_MS);
+        },
+        [onAnchorChange],
+    );
+
     const updatePosition = useCallback(
-        (syncAnchor = true) => {
+        (syncAnchor = true, deferAnchorSync = false) => {
             const container = containerRef.current;
             const wordElements = wordElementsRef.current;
             if (
@@ -75,7 +106,12 @@ export function useDocumentPosition({
             ) {
                 activeWordRef.current = { layout, idPrefix, index: wordIndex };
                 if (syncAnchor) {
-                    onAnchorChange(wordIndex);
+                    if (deferAnchorSync) {
+                        scheduleAnchorSync(wordIndex);
+                    } else {
+                        cancelPendingAnchorSync();
+                        onAnchorChange(wordIndex);
+                    }
                 }
             }
 
@@ -85,12 +121,20 @@ export function useDocumentPosition({
                     : { tape: word.tape, seconds: word.seconds },
             );
         },
-        [idPrefix, layout, onAnchorChange],
+        [
+            cancelPendingAnchorSync,
+            idPrefix,
+            layout,
+            onAnchorChange,
+            scheduleAnchorSync,
+        ],
     );
     const updateCurrentPosition = useCallback(
-        () => updatePosition(),
+        () => updatePosition(true, true),
         [updatePosition],
     );
+
+    useEffect(() => cancelPendingAnchorSync, [cancelPendingAnchorSync]);
 
     useEffect(() => {
         const container = containerRef.current;
@@ -102,6 +146,7 @@ export function useDocumentPosition({
             container.querySelectorAll<HTMLElement>('[data-word-index]'),
         );
         if (wordElementsRef.current.length === 0) {
+            cancelPendingAnchorSync();
             activeWordRef.current = null;
             setCurrentPosition(null);
             return;
@@ -115,6 +160,7 @@ export function useDocumentPosition({
             activeWord.index === anchor;
         const didScrollToAnchor = Boolean(word && !alreadyAtAnchor);
         if (didScrollToAnchor && word) {
+            cancelPendingAnchorSync();
             const wordRect = word.getBoundingClientRect();
             const containerTop = container.getBoundingClientRect().top;
             const wordCenter =
@@ -129,7 +175,7 @@ export function useDocumentPosition({
             });
         }
         updatePosition(!didScrollToAnchor);
-    }, [anchor, idPrefix, layout, updatePosition]);
+    }, [anchor, cancelPendingAnchorSync, idPrefix, layout, updatePosition]);
 
     return {
         containerRef,

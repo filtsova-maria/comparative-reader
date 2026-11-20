@@ -138,19 +138,22 @@ identify the documents and reading positions:
 | URL            | Behavior                                                                                       |
 | -------------- | ---------------------------------------------------------------------------------------------- |
 | `/`            | Redirects to `/read` when a source document is present; otherwise redirects to `/pick/source`. |
-| `/pick/source` | Opens mdocument browsing to choose the source document.                                        |
+| `/pick/source` | Opens document browsing to choose the source document.                                         |
 | `/pick/target` | Opens document browsing to choose a target document.                                           |
 | `/read`        | Opens the reader. A source document is required; without one, redirects to `/pick/source`.     |
 
 Workspace URLs use these query parameters:
 
-| Parameter | Meaning                                                                                       |
-| --------- | --------------------------------------------------------------------------------------------- |
-| `s`       | Source document ID.                                                                           |
-| `sa`      | Source sentence index (zero-based; defaults to `0` when omitted or invalid).                  |
-| `sel`     | Optional selected source-text range as `start-end` character offsets, with the end exclusive. |
-| `t`       | Target document ID.                                                                           |
-| `ta`      | Target sentence index (zero-based; defaults to `0` when omitted or invalid).                  |
+| Parameter | Meaning                                                                                   |
+| --------- | ----------------------------------------------------------------------------------------- |
+| `s`       | Source document ID.                                                                       |
+| `sa`      | Source word anchor (zero-based; defaults to `0` when omitted or invalid).                 |
+| `sq`      | Source document full-text search query; matching words are highlighted in the reader.     |
+| `t`       | Target document ID.                                                                       |
+| `ta`      | Target word anchor (zero-based; defaults to `0` when omitted or invalid).                 |
+| `tq`      | Target document full-text search query; matching words are highlighted in the reader.     |
 
-For example, `/read?s=06052&sa=120&sel=120-180&t=38594&ta=45` opens
-the reader with source document 06052 and target document 38594 scrolled to their anchor positions. The root route uses the `s` parameter to decide whether to redirect to the reader or the document browser.
+For example, `/read?s=06052&sa=120&sq=home&t=38594&ta=45&tq=memory` opens
+both documents at their word anchors and restores each pane's search and
+highlights. The root route uses `s` to decide whether to redirect to the reader
+or the document browser.
