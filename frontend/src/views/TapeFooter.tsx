@@ -31,7 +31,7 @@ export const TapeFooter = ({ tape, seconds, duration }: TapeFooterProps) => {
                     className="h-2 flex-1 overflow-hidden rounded-full bg-gray-200"
                 >
                     <div
-                        className="h-full rounded-full bg-blue-300 transition-[width] duration-200 ease-in"
+                        className="h-full rounded-full bg-blue-300 transition-[width] duration-200 ease-linear"
                         style={{ width: `${progress}%` }}
                     />
                 </div>

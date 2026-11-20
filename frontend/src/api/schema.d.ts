@@ -11,8 +11,42 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Testimonies */
-        get: operations['list_testimonies_api_testimonies_get'];
+        /** List Testimony Summaries */
+        get: operations['list_testimony_summaries_api_testimonies_get'];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    '/api/search/testimonies': {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search Testimonies */
+        get: operations['search_testimonies_api_search_testimonies_get'];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    '/api/search/testimonies/{testimony_id}': {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search In Testimony */
+        get: operations['search_in_testimony_api_search_testimonies__testimony_id__get'];
         put?: never;
         post?: never;
         delete?: never;
@@ -76,6 +110,26 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** DocHit */
+        DocHit: {
+            /** Idx */
+            idx: number;
+            /** Tape */
+            tape: number;
+            /** Text */
+            text: string;
+            /** Anchor */
+            anchor: number;
+            /** Ranges */
+            ranges: components['schemas']['Range'][];
+        };
+        /** DocSearchResponse */
+        DocSearchResponse: {
+            /** Total Sentences */
+            total_sentences: number;
+            /** Hits */
+            hits: components['schemas']['DocHit'][];
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -89,6 +143,13 @@ export interface components {
             label: string;
             /** Weight */
             weight: number;
+        };
+        /** Range */
+        Range: {
+            /** Start */
+            start: number;
+            /** End */
+            end: number;
         };
         /** Sentence */
         Sentence: {
@@ -116,6 +177,19 @@ export interface components {
             /** Keywords */
             keywords: components['schemas']['Keyword'][];
         };
+        /** Snippet */
+        Snippet: {
+            /** Idx */
+            idx: number;
+            /** Tape */
+            tape: number;
+            /** Text */
+            text: string;
+            /** Anchor */
+            anchor: number;
+            /** Ranges */
+            ranges: components['schemas']['Range'][];
+        };
         /** TestimonyBio */
         TestimonyBio: {
             /** Fullname */
@@ -142,6 +216,35 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** TestimonySearchResult */
+        TestimonySearchResult: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Language */
+            language: string;
+            /** Interview Date */
+            interview_date: string | null;
+            /** Location */
+            location: string | null;
+            /** Duration */
+            duration: string | null;
+            /** Thumbnail Url */
+            thumbnail_url: string | null;
+            /**
+             * Name Match
+             * @default false
+             */
+            name_match: boolean;
+            /**
+             * Transcript Hits
+             * @default 0
+             */
+            transcript_hits: number;
+            /** Snippets */
+            snippets?: components['schemas']['Snippet'][];
+        };
         /** TestimonySummary */
         TestimonySummary: {
             /** Id */
@@ -150,8 +253,6 @@ export interface components {
             name: string;
             /** Language */
             language: string;
-            /** Experience */
-            experience: string | null;
             /** Interview Date */
             interview_date: string | null;
             /** Location */
@@ -183,11 +284,12 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    list_testimonies_api_testimonies_get: {
+    list_testimony_summaries_api_testimonies_get: {
         parameters: {
             query?: {
                 search?: string | null;
                 language?: string | null;
+                location?: string | null;
             };
             header?: never;
             path?: never;
@@ -202,6 +304,72 @@ export interface operations {
                 };
                 content: {
                     'application/json': components['schemas']['TestimonySummary'][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['HTTPValidationError'];
+                };
+            };
+        };
+    };
+    search_testimonies_api_search_testimonies_get: {
+        parameters: {
+            query: {
+                search: string;
+                language?: string | null;
+                location?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['TestimonySearchResult'][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['HTTPValidationError'];
+                };
+            };
+        };
+    };
+    search_in_testimony_api_search_testimonies__testimony_id__get: {
+        parameters: {
+            query: {
+                q: string;
+            };
+            header?: never;
+            path: {
+                testimony_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['DocSearchResponse'];
                 };
             };
             /** @description Validation Error */

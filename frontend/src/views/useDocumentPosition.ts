@@ -25,6 +25,7 @@ export function useDocumentPosition({
     idPrefix,
     onAnchorChange,
 }: UseDocumentPositionProps) {
+    // TODO: figure out how to scroll to center instead of top of the page
     const containerRef = useRef<HTMLDivElement>(null);
     const wordElementsRef = useRef<HTMLElement[]>([]);
     const activeWordRef = useRef<ActiveWord | null>(null);

@@ -1,14 +1,20 @@
 import { useMemo } from 'react';
-import type { TestimonyData } from '../api/types';
+import type { TestimonyData, TestimonySearchResponse } from '../api/types';
 import { DocumentText } from './DocumentText';
 import { TapeFooter } from './TapeFooter';
 import { buildDocumentLayout } from './documentModel';
 import { useDocumentPosition } from './useDocumentPosition';
 
+type SearchHit = Pick<
+    TestimonySearchResponse['hits'][number],
+    'idx' | 'ranges'
+>;
+
 interface DocumentProps {
     data: TestimonyData;
     anchor: number;
     idPrefix: string;
+    searchHits?: SearchHit[];
     onAnchorChange: (anchor: number) => void;
 }
 
@@ -16,6 +22,7 @@ export const Document = ({
     data,
     anchor,
     idPrefix,
+    searchHits,
     onAnchorChange,
 }: DocumentProps) => {
     const layout = useMemo(
@@ -39,7 +46,11 @@ export const Document = ({
             className="relative flex h-[calc(100vh-12rem)] flex-col overflow-y-auto leading-[1.65] text-lg"
             onScroll={updateCurrentPosition}
         >
-            <DocumentText layout={layout} idPrefix={idPrefix} />
+            <DocumentText
+                layout={layout}
+                idPrefix={idPrefix}
+                searchHits={searchHits}
+            />
             {currentPosition && (
                 <TapeFooter
                     tape={currentPosition.tape}

@@ -3,6 +3,9 @@ import type {
     ListTestimonyParams,
     TestimonyData,
     TestimonyMetadata,
+    TestimonySearchResponse,
+    TestimonySearchResult,
+    SearchTestimonyParams,
     TestimonySummary,
 } from './types';
 
@@ -18,6 +21,9 @@ export async function listTestimonyMetadata(
     if (params?.language) {
         searchParams.set('language', params.language);
     }
+    if (params?.location) {
+        searchParams.set('location', params.location);
+    }
 
     const query = searchParams.toString();
     const response = await fetch(
@@ -28,6 +34,53 @@ export async function listTestimonyMetadata(
     if (!response.ok) {
         throw new Error(
             `Failed to fetch testimonies: ${response.status} ${response.statusText}`,
+        );
+    }
+
+    return response.json();
+}
+
+export async function searchTestimonies(
+    params: SearchTestimonyParams,
+    signal?: AbortSignal,
+): Promise<TestimonySearchResult[]> {
+    const searchParams = new URLSearchParams();
+    searchParams.set('search', params.search);
+    if (params.language) {
+        searchParams.set('language', params.language);
+    }
+    if (params.location) {
+        searchParams.set('location', params.location);
+    }
+
+    const response = await fetch(
+        `${serverUrl}/api/search/testimonies?${searchParams.toString()}`,
+        { signal },
+    );
+
+    if (!response.ok) {
+        throw new Error(
+            `Failed to search testimonies: ${response.status} ${response.statusText}`,
+        );
+    }
+
+    return response.json();
+}
+
+export async function searchWithinTestimony(
+    testimonyId: string,
+    query: string,
+    signal?: AbortSignal,
+): Promise<TestimonySearchResponse> {
+    const searchParams = new URLSearchParams({ q: query });
+    const response = await fetch(
+        `${serverUrl}/api/search/testimonies/${encodeURIComponent(testimonyId)}?${searchParams.toString()}`,
+        { signal },
+    );
+
+    if (!response.ok) {
+        throw new Error(
+            `Failed to search testimony: ${response.status} ${response.statusText}`,
         );
     }
 

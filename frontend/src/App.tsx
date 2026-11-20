@@ -34,16 +34,16 @@ function BrowseRoute({ mode }: { mode: BrowseMode }) {
         .map((param) => searchParams.get(param)?.trim())
         .filter((docId): docId is string => Boolean(docId));
 
-    function handleDocumentSelect(docId: string) {
+    function handleDocumentSelect(docId: string, anchor = 0) {
         const nextSearchParams = new URLSearchParams(searchParams);
 
         if (mode === 'source') {
             nextSearchParams.set('s', docId);
-            nextSearchParams.set('sa', '0');
+            nextSearchParams.set('sa', String(anchor));
             nextSearchParams.delete('sel');
         } else {
             nextSearchParams.set('t', docId);
-            nextSearchParams.set('ta', '0');
+            nextSearchParams.set('ta', String(anchor));
         }
 
         navigate({
@@ -57,6 +57,7 @@ function BrowseRoute({ mode }: { mode: BrowseMode }) {
             mode={mode}
             excludedDocIds={excludedDocIds}
             onDocumentSelect={handleDocumentSelect}
+            onExcerptSelect={handleDocumentSelect}
         />
     );
 }

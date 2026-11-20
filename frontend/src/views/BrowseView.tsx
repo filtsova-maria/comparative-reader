@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import {
     listLanguages,
     listTestimonyMetadata,
-    // searchTestimonies,
+    searchTestimonies,
 } from '../api/testimonies';
 import { BrowseFilters } from './BrowseFilters';
 import { TestimonyCard } from './TestimonyCard';
@@ -14,47 +14,57 @@ interface BrowseViewProps {
     mode: BrowseMode;
     excludedDocIds: string[];
     onDocumentSelect: (docId: string) => void;
+    onExcerptSelect: (docId: string, anchor: number) => void;
 }
 
 export const BrowseView = ({
     mode,
     excludedDocIds,
     onDocumentSelect,
+    onExcerptSelect,
 }: BrowseViewProps) => {
     const [search, setSearch] = useState('');
-    const [debouncedSearch, setDebouncedSearch] = useState('');
     const [language, setLanguage] = useState('');
+    const [location, setLocation] = useState('');
+    const [debouncedFilters, setDebouncedFilters] = useState({
+        search: '',
+        language: '',
+        location: '',
+    });
 
     useEffect(() => {
         const timeout = window.setTimeout(
-            () => setDebouncedSearch(search.trim()),
+            () =>
+                setDebouncedFilters({
+                    search: search.trim(),
+                    language: language.trim(),
+                    location: location.trim(),
+                }),
             300,
         );
 
         return () => window.clearTimeout(timeout);
-    }, [search]);
+    }, [search, language, location]);
 
     const testimoniesQuery = useQuery({
-        queryKey: [
-            'testimonies',
-            { search: debouncedSearch, language },
-        ] as const,
-        // TODO: reenable search once implemented on backend
-        // queryFn: ({ signal }) =>
-        //     debouncedSearch
-        //         ? searchTestimonies(
-        //               {
-        //                   search: debouncedSearch,
-        //                   language: language || undefined,
-        //               },
-        //               signal,
-        //           )
-        //         : listTestimonyMetadata(
-        //               { language: language || undefined },
-        //               signal,
-        //           ),
+        queryKey: ['testimonies', debouncedFilters] as const,
         queryFn: ({ signal }) =>
-            listTestimonyMetadata({ language: language || undefined }, signal),
+            debouncedFilters.search
+                ? searchTestimonies(
+                      {
+                          search: debouncedFilters.search,
+                          language: debouncedFilters.language || undefined,
+                          location: debouncedFilters.location || undefined,
+                      },
+                      signal,
+                  )
+                : listTestimonyMetadata(
+                      {
+                          language: debouncedFilters.language || undefined,
+                          location: debouncedFilters.location || undefined,
+                      },
+                      signal,
+                  ),
     });
     const languagesQuery = useQuery({
         queryKey: ['testimony-languages'],
@@ -73,10 +83,12 @@ export const BrowseView = ({
             <BrowseFilters
                 search={search}
                 language={language}
+                location={location}
                 languages={languagesQuery.data ?? []}
                 languagesLoading={languagesQuery.isPending}
                 onSearchChange={setSearch}
                 onLanguageChange={setLanguage}
+                onLocationChange={setLocation}
             />
 
             {languagesQuery.isError && (
@@ -103,6 +115,7 @@ export const BrowseView = ({
                                 key={testimony.id}
                                 testimony={testimony}
                                 onSelect={onDocumentSelect}
+                                onExcerptSelect={onExcerptSelect}
                             />
                         ))}
                     </ul>
