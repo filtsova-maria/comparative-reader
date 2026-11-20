@@ -12,6 +12,7 @@ interface DocumentPaneHeaderProps {
     idPrefix: string;
     search: string;
     onSearchChange: (value: string) => void;
+    onSearchFocus: () => void;
     secondaryBrowsePath?: string;
     secondaryBrowseLabel?: string;
 }
@@ -47,6 +48,7 @@ export const DocumentPaneHeader = ({
     idPrefix,
     search,
     onSearchChange,
+    onSearchFocus,
     secondaryBrowsePath,
     secondaryBrowseLabel,
 }: DocumentPaneHeaderProps) => {
@@ -84,6 +86,7 @@ export const DocumentPaneHeader = ({
                     type="search"
                     value={search}
                     onChange={(event) => onSearchChange(event.target.value)}
+                    onFocus={onSearchFocus}
                     placeholder="Search document"
                     className="min-h-10 min-w-0 flex-1 bg-white px-3 py-2 font-inherit text-inherit"
                 />
@@ -92,7 +95,7 @@ export const DocumentPaneHeader = ({
     );
 
     return (
-        <header className="mb-4 flex min-w-0 flex-wrap items-center gap-3">
+        <header className="flex min-w-0 flex-wrap items-center gap-3">
             {identity}
             {searchBar}
             {secondaryBrowsePath && secondaryBrowseLabel && (

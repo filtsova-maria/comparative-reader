@@ -25,7 +25,6 @@ export function useDocumentPosition({
     idPrefix,
     onAnchorChange,
 }: UseDocumentPositionProps) {
-    // TODO: figure out how to scroll to center instead of top of the page
     const containerRef = useRef<HTMLDivElement>(null);
     const wordElementsRef = useRef<HTMLElement[]>([]);
     const activeWordRef = useRef<ActiveWord | null>(null);
@@ -106,11 +105,17 @@ export function useDocumentPosition({
             activeWord.idPrefix === idPrefix &&
             activeWord.index === anchor;
         if (word && !alreadyAtAnchor) {
-            const wordTop =
-                word.getBoundingClientRect().top -
-                container.getBoundingClientRect().top;
+            const wordRect = word.getBoundingClientRect();
+            const containerTop = container.getBoundingClientRect().top;
+            const wordCenter =
+                wordRect.top - containerTop + wordRect.height / 2;
             container.scrollTo({
-                top: Math.max(0, container.scrollTop + wordTop),
+                top: Math.max(
+                    0,
+                    container.scrollTop +
+                        wordCenter -
+                        container.clientHeight / 2,
+                ),
             });
         }
         updateCurrentPosition();

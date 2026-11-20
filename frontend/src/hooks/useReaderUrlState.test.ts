@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { parseDocumentAnchor, withUpdatedAnchor } from './useReaderUrlState';
+import {
+    parseDocumentAnchor,
+    withUpdatedAnchor,
+    withUpdatedSearch,
+} from './useReaderUrlState';
 
 describe('parseDocumentAnchor', () => {
     it('accepts safe non-negative integers and defaults invalid values to zero', () => {
@@ -30,5 +34,27 @@ describe('withUpdatedAnchor', () => {
         expect(
             withUpdatedAnchor(new URLSearchParams('sa=42'), 'sa', 42),
         ).toBeNull();
+    });
+});
+
+describe('withUpdatedSearch', () => {
+    it('updates one pane search while preserving the other URL state', () => {
+        const updated = withUpdatedSearch(
+            new URLSearchParams('s=06052&sa=9&tq=existing'),
+            'sq',
+            'full text',
+        );
+
+        expect(updated?.get('sq')).toBe('full text');
+        expect(updated?.get('tq')).toBe('existing');
+        expect(updated?.get('sa')).toBe('9');
+    });
+
+    it('removes a cleared search and skips unchanged values', () => {
+        const current = new URLSearchParams('sq=old');
+        expect(withUpdatedSearch(current, 'sq', '   ')).toEqual(
+            new URLSearchParams(),
+        );
+        expect(withUpdatedSearch(current, 'sq', 'old')).toBeNull();
     });
 });

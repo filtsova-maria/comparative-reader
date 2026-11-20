@@ -34,8 +34,18 @@ function BrowseRoute({ mode }: { mode: BrowseMode }) {
         .map((param) => searchParams.get(param)?.trim())
         .filter((docId): docId is string => Boolean(docId));
 
-    function handleDocumentSelect(docId: string, anchor = 0) {
+    function handleDocumentSelect(
+        docId: string,
+        anchor = 0,
+        fullTextSearch?: string,
+    ) {
         const nextSearchParams = new URLSearchParams(searchParams);
+        const searchKey = mode === 'source' ? 'sq' : 'tq';
+        if (fullTextSearch?.trim()) {
+            nextSearchParams.set(searchKey, fullTextSearch);
+        } else {
+            nextSearchParams.delete(searchKey);
+        }
 
         if (mode === 'source') {
             nextSearchParams.set('s', docId);

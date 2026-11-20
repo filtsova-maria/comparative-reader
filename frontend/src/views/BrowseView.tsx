@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router';
 import {
     listLanguages,
     listTestimonyMetadata,
@@ -14,7 +15,7 @@ interface BrowseViewProps {
     mode: BrowseMode;
     excludedDocIds: string[];
     onDocumentSelect: (docId: string) => void;
-    onExcerptSelect: (docId: string, anchor: number) => void;
+    onExcerptSelect: (docId: string, anchor: number, search: string) => void;
 }
 
 export const BrowseView = ({
@@ -23,11 +24,14 @@ export const BrowseView = ({
     onDocumentSelect,
     onExcerptSelect,
 }: BrowseViewProps) => {
-    const [search, setSearch] = useState('');
+    const [searchParams] = useSearchParams();
+    const initialSearch =
+        searchParams.get(mode === 'source' ? 'sq' : 'tq') ?? '';
+    const [search, setSearch] = useState(initialSearch);
     const [language, setLanguage] = useState('');
     const [location, setLocation] = useState('');
     const [debouncedFilters, setDebouncedFilters] = useState({
-        search: '',
+        search: initialSearch.trim(),
         language: '',
         location: '',
     });
@@ -115,7 +119,13 @@ export const BrowseView = ({
                                 key={testimony.id}
                                 testimony={testimony}
                                 onSelect={onDocumentSelect}
-                                onExcerptSelect={onExcerptSelect}
+                                onExcerptSelect={(docId, anchor) =>
+                                    onExcerptSelect(
+                                        docId,
+                                        anchor,
+                                        debouncedFilters.search,
+                                    )
+                                }
                             />
                         ))}
                     </ul>

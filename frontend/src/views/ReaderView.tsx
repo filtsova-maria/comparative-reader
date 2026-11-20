@@ -10,8 +10,12 @@ export const ReaderView = () => {
         targetId,
         sourceAnchor,
         targetAnchor,
+        sourceSearch,
+        targetSearch,
         updateSourceAnchor,
         updateTargetAnchor,
+        updateSourceSearch,
+        updateTargetSearch,
     } = useReaderUrlState();
     const location = useLocation();
 
@@ -32,6 +36,8 @@ export const ReaderView = () => {
                     browsePath="/pick/source"
                     browseSearch={location.search}
                     browseLabel="Change source document"
+                    search={sourceSearch}
+                    onSearchChange={updateSourceSearch}
                     secondaryBrowsePath={targetId ? undefined : '/pick/target'}
                     secondaryBrowseLabel={
                         targetId ? undefined : 'Choose target document'
@@ -47,6 +53,8 @@ export const ReaderView = () => {
                         browsePath="/pick/target"
                         browseSearch={location.search}
                         browseLabel="Change target document"
+                        search={targetSearch}
+                        onSearchChange={updateTargetSearch}
                         onAnchorChange={updateTargetAnchor}
                     />
                 )}
