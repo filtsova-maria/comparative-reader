@@ -1,13 +1,28 @@
 #!/usr/bin/env python3
-"""Align one tape transcript (.txt) with its subtitles (.vtt) and write a
-sentences JSON: char offsets, approximate timecodes and metadata keywords.
+"""Align transcript tapes and write one combined sentences JSON per testimony.
 
-    python align_tape.py 06052-01.spellfix.txt 06052-01.spellfix.vtt 6052.json
+Run from the repository root, passing all transcript TXT files:
 
-Canonical text = file content decoded as UTF-8 (BOM dropped), NFC-normalized,
-with \\n line endings. All offsets refer to that string, and the JSON stores
-its SHA-256 so a stale offsets file can be detected. Offsets are written in
-UTF-16 code units (what JavaScript string indices use).
+    python preprocessing/align_tape.py data/transcripts/*.txt
+
+Each TXT is paired with a VTT of the same name and grouped by its
+``<document-id>-<tape-number>`` filename prefix. The corresponding metadata
+JSON is loaded from ``data/metadata/<integer-document-id>.json``. By default,
+the combined result is written to
+``data/processed/<five-digit-document-id>.sentences.json``. Override the
+metadata and output directories with ``--metadata-dir`` and ``--out-dir``.
+
+Transcript text is decoded as UTF-8 (dropping a BOM), normalized to NFC, and
+given LF line endings before alignment. Sentence offsets are exclusive-end
+UTF-16 code-unit offsets into this canonical text, matching JavaScript string
+indices. Each tape entry includes a SHA-256 digest so consumers can detect
+when stored offsets no longer correspond to the transcript.
+
+Matching runs of at least three normalized words inherit VTT cue times;
+unmatched words are interpolated between matched words. The combined document
+JSON contains per-tape source files, hashes and reports, plus sentences with
+indices continuous across tapes. Use ``--strict`` to exit with status 2 when
+any report contains warnings; outputs are still written.
 """
 import argparse
 import hashlib
@@ -22,7 +37,7 @@ from pathlib import Path
 
 import numpy as np
 
-VERSION = 1
+VERSION = 2
 
 TOK = re.compile(r"\w+", re.UNICODE)
 TAG = re.compile(r"<[^>]*>") # strip HTML tags from VTT text
@@ -31,7 +46,7 @@ TAG = re.compile(r"<[^>]*>") # strip HTML tags from VTT text
 SENT = re.compile(r"\S.*?(?:[.!?…]+[\"'”’)\]]*(?=\s|$)|$)")
 
 MIN_BLOCK = 3         # ignore matching runs shorter than this many words
-MIN_OVERLAP = 0.3     # a sentence must lie at least 30% within a minute to inherit its keywords
+MIN_OVERLAP = 0.3     # a sentence must overlap a keyword segment by at least 30%
 WARN_MATCH_RATIO = 0.90 # minimum fraction of transcript words that must match a VTT word
 WARN_MAX_JUMP_S = 120.0 # maximum gap between consecutive sentences (seconds)
 
@@ -174,7 +189,6 @@ def align_tokens(text, cues):
     known = np.flatnonzero(matched)
     start = np.maximum.accumulate(np.interp(idx, known, start[known]))
     end = np.maximum.accumulate(np.interp(idx, known, end[known]))
-    print(idx, known, start, end, matched)
     return t_tok, start, np.maximum(end, start), matched
 
 
@@ -257,48 +271,115 @@ def build(text, cues, kw_segments, tape, duration):
 
 
 # --------------------------------------------------------------------------
+def process_transcripts(txt_paths, metadata_dir, output_dir, strict=False):
+    grouped = {}
+    for txt_path in sorted(txt_paths):
+        match = re.match(r"^(?P<document_id>\d+)-(?P<tape>\d+)\.", txt_path.name)
+        if not match:
+            raise ValueError(
+                f"cannot infer document and tape numbers from {txt_path.name}"
+            )
+        document_id = f"{int(match.group('document_id')):05d}"
+        tape = int(match.group("tape"))
+        tapes = grouped.setdefault(document_id, {})
+        if tape in tapes:
+            raise ValueError(
+                f"duplicate transcript for document {document_id}, tape {tape}"
+            )
+        tapes[tape] = txt_path
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    strict_warnings = False
+    for document_id, tape_paths in sorted(grouped.items()):
+        metadata_path = metadata_dir / f"{int(document_id)}.json"
+        if not metadata_path.is_file():
+            raise FileNotFoundError(
+                f"metadata not found for document {document_id}: {metadata_path}"
+            )
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8-sig"))
+        tape_records = []
+        document_sentences = []
+        document_warnings = []
+
+        for tape, txt_path in sorted(tape_paths.items()):
+            vtt_path = txt_path.with_suffix(".vtt")
+            if not vtt_path.is_file():
+                raise FileNotFoundError(f"VTT subtitles not found: {vtt_path}")
+
+            text = read_text(txt_path)
+            cues = parse_vtt(vtt_path.read_text(encoding="utf-8-sig"))
+            kw_segments, duration = keyword_segments(metadata, tape)
+            sentences, report = build(text, cues, kw_segments, tape, duration)
+
+            sentence_offset = len(document_sentences)
+            for sentence in sentences:
+                sentence["idx"] += sentence_offset
+            document_sentences.extend(sentences)
+
+            tape_warnings = report["warnings"]
+            strict_warnings = strict_warnings or bool(tape_warnings)
+            document_warnings.extend(
+                f"Tape {tape}: {warning}" for warning in tape_warnings
+            )
+            tape_records.append(
+                {
+                    "tape": tape,
+                    "text_sha256": hashlib.sha256(
+                        text.encode("utf-8")
+                    ).hexdigest(),
+                    "source": {"txt": txt_path.name, "vtt": vtt_path.name},
+                    "report": report,
+                }
+            )
+
+        payload = {
+            "version": VERSION,
+            "document_id": document_id,
+            "offset_unit": "utf-16",
+            "metadata": metadata_path.name,
+            "tapes": tape_records,
+            "report": {
+                "tapes": len(tape_records),
+                "sentences": len(document_sentences),
+                "warnings": document_warnings,
+            },
+            "sentences": document_sentences,
+        }
+        out_path = output_dir / f"{document_id}.sentences.json"
+        out_path.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        print(
+            f"{out_path}: {len(document_sentences)} sentences "
+            f"across {len(tape_records)} tapes",
+            file=sys.stderr,
+        )
+        for warning in document_warnings:
+            print(f"WARNING: {warning}", file=sys.stderr)
+
+    return 2 if strict and strict_warnings else 0
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("txt", type=Path)
-    ap.add_argument("vtt", type=Path)
-    ap.add_argument("metadata", type=Path, help="testimony metadata JSON")
-    ap.add_argument("--tape", type=int, help="tape number (default: parsed from NNNNN-TT in the file name)")
-    ap.add_argument("--out", type=Path, help="default: <txt without .txt>.sentences.json")
+    ap.add_argument("txt", type=Path, nargs="+", help="transcript TXT files (for example: data/transcripts/*.txt)")
+    ap.add_argument("--metadata-dir", type=Path, default=Path("data/metadata"))
+    ap.add_argument("--out-dir", type=Path, default=Path("data/processed"))
     ap.add_argument("--strict", action="store_true", help="exit with status 2 when there are warnings")
     args = ap.parse_args()
 
-    tape = args.tape
-    if tape is None:
-        m = re.search(r"-(\d+)\.", args.txt.name)
-        if not m:
-            sys.exit("error: cannot infer tape number from the file name, pass --tape")
-        tape = int(m.group(1))
-
-    text = read_text(args.txt)
-    cues = parse_vtt(args.vtt.read_text(encoding="utf-8-sig"))
-    metadata = json.loads(args.metadata.read_text(encoding="utf-8-sig"))
-    kw_segments, duration = keyword_segments(metadata, tape)
-
-    sentences, report = build(text, cues, kw_segments, tape, duration)
-
-    out = args.out or args.txt.with_suffix(".sentences.json")
-    payload = {
-        "version": VERSION,
-        "tape": tape,
-        "offset_unit": "utf-16",
-        "text_sha256": hashlib.sha256(text.encode("utf-8")).hexdigest(),
-        "source": {"txt": args.txt.name, "vtt": args.vtt.name, "metadata": args.metadata.name},
-        "report": report,
-        "sentences": sentences,
-    }
-    out.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-
-    print(f"{out}: {len(sentences)} sentences", file=sys.stderr)
-    print(json.dumps(report, indent=2), file=sys.stderr)
-    for w in report["warnings"]:
-        print(f"WARNING: {w}", file=sys.stderr)
-    if args.strict and report["warnings"]:
-        sys.exit(2)
+    try:
+        exit_code = process_transcripts(
+            args.txt,
+            args.metadata_dir,
+            args.out_dir,
+            strict=args.strict,
+        )
+    except (FileNotFoundError, ValueError) as error:
+        ap.error(str(error))
+    if exit_code:
+        sys.exit(exit_code)
 
 
 if __name__ == "__main__":

@@ -4,44 +4,65 @@
 
 ### Processed sentences JSON
 
-Run the alignment script from the repository root to generate the processed
-files:
+Run the alignment script from the repository root with all transcript TXT files. Each TXT expects a matching
+same-basename VTT file, and the script finds metadata by document ID:
 
 ```sh
+. venv/bin/activate
+python -m pip install -r preprocessing/requirements.txt
 python preprocessing/align_tape.py data/transcripts/*.txt
 ```
 
-The script writes one `data/processed/<document-id>.sentences.json` file per
-document ID. Each file combines that document's tapes. Its top-level structure
-is:
+The script groups tapes by the `<document-id>-<tape-number>` filename prefix
+and writes one combined file per testimony to
+`data/processed/<five-digit-document-id>.sentences.json`. Use `--metadata-dir`
+or `--out-dir` to override the default directories.
 
-| Field         | Description                                                                 |
-| ------------- | --------------------------------------------------------------------------- |
-| `version`     | Format version.                                                             |
-| `document_id` | Document ID from the transcript filenames.                                  |
-| `offset_unit` | Character-offset unit; currently `utf-16` (JavaScript string indices).      |
-| `metadata`    | Shared metadata JSON filename for all tapes in the document.                |
-| `tapes`       | Per-tape source files, transcript hash, and alignment report.               |
-| `report`      | Document-level counts and any warnings.                                     |
-| `sentences`   | Combined sentences, ordered by tape and then by position in the transcript. |
+Top-level JSON structure:
 
-Each item in `sentences` contains:
+| Field         | Description                                                               |
+| ------------- | ------------------------------------------------------------------------- |
+| `version`     | Processed document format version (`2`).                                  |
+| `document_id` | Five-digit document ID from the transcript filename.                      |
+| `offset_unit` | `utf-16`, matching JavaScript string indices.                             |
+| `metadata`    | Metadata JSON filename.                                                   |
+| `tapes`       | Per-tape source TXT/VTT names, transcript hash, and alignment report.     |
+| `report`      | Document-level tape and sentence counts, plus any tape warnings.          |
+| `sentences`   | Combined sentences ordered by tape, with indices continuous across tapes. |
 
-| Field                    | Description                                                                                                |
-| ------------------------ | ---------------------------------------------------------------------------------------------------------- |
-| `idx`                    | Zero-based sentence index across the document.                                                             |
-| `tape`                   | Tape number.                                                                                               |
-| `start_char`, `end_char` | Transcript offsets for the sentence; the end is exclusive and offsets are local to that tape's transcript. |
-| `text`                   | Sentence text from the transcript.                                                                         |
-| `start_tc`, `end_tc`     | Approximate start and end time in seconds, local to the tape.                                              |
-| `tc_source`              | `matched`, `interpolated`, or `no_tokens`, indicating how timing was assigned.                             |
-| `matched_ratio`          | Fraction of the sentence's words matched to subtitle words.                                                |
-| `keywords`               | Keywords overlapping the sentence, each with `id`, `label`, and an overlap `weight` from 0 to 1.           |
+Transcript text is decoded as UTF-8 with a BOM removed, normalized to NFC, and
+has line endings converted to LF before offsets and the hash are calculated.
+Sentence boundaries are detected within each non-empty line, ending at `.`,
+`!`, `?`, or `…` (including immediately following closing punctuation), or at
+the end of the line.
 
-Each tape's `text_sha256` is the SHA-256 hash of its normalized transcript
-text for detecting stale offsets. Tape-level reports include alignment
-quality measures and warnings; the document-level report summarizes the tape
-and sentence counts and collects any tape warnings.
+The script normalizes words for comparison by case-folding and removing
+diacritics. Matching runs of at least three words inherit approximate times
+from their VTT cues, interpolated across each cue. Other words are interpolated
+between matched words. Words outside the matched range use the nearest matched
+time. If no words match, the script exits with an error. Pass `--strict` to
+exit with status 2 when the generated report contains warnings, the output
+file is still written.
+
+Each sentence in `sentences` contains:
+
+| Field                    | Description                                                                                                               |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| `idx`                    | Zero-based sentence index across the combined document.                                                                   |
+| `tape`                   | Tape number.                                                                                                              |
+| `start_char`, `end_char` | Offsets into that tape's canonical transcript; end is exclusive.                                                          |
+| `text`                   | Sentence text from the transcript.                                                                                        |
+| `start_tc`, `end_tc`     | Approximate start and end time in seconds, local to the tape.                                                             |
+| `tc_source`              | `matched` if the first word matched a cue, `interpolated` if it did not, or `no_tokens` if wordless.                      |
+| `matched_ratio`          | Fraction of the sentence's transcript words in matching runs of at least three words.                                     |
+| `keywords`               | Keywords from metadata segments overlapping at least 30% of the sentence; each has `id`, `label`, and weight from 0 to 1. |
+
+The report includes the overall token match ratio, longest unmatched word run,
+sentence counts (including interpolated and wordless sentences), number of
+sentences with keywords, largest gap between sentence start times, last
+sentence end time, tape duration when available, and warnings. A warning is
+emitted when the token match ratio is below 0.90 or the maximum gap exceeds
+120 seconds.
 
 ## Frontend
 
