@@ -350,7 +350,7 @@ class OpenSearchBackendTests(unittest.TestCase):
             results = search_testimonies(
                 search="home",
                 language=" English ",
-                location="United",
+                location="Unit",
             )
 
         self.assertEqual([result.id for result in results], ["06052", "09059"])
@@ -375,7 +375,7 @@ class OpenSearchBackendTests(unittest.TestCase):
                     {"term": {"language": "English"}},
                     {
                         "multi_match": {
-                            "query": "United",
+                            "query": "Unit",
                             "type": "bool_prefix",
                             "fields": ["location_search"],
                             "operator": "and",
@@ -387,6 +387,20 @@ class OpenSearchBackendTests(unittest.TestCase):
                 request["collapse"]["inner_hits"]["size"],
                 3,
             )
+        transcript_query = requests[3]["query"]["bool"]
+        self.assertEqual(
+            transcript_query["must"],
+            [
+                {
+                    "multi_match": {
+                        "query": "home",
+                        "type": "bool_prefix",
+                        "fields": ["text"],
+                        "operator": "and",
+                    }
+                }
+            ],
+        )
         metadata_query = requests[1]["query"]["bool"]["must"][0]["bool"]
         self.assertEqual(metadata_query["minimum_should_match"], 1)
         self.assertEqual(

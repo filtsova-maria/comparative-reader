@@ -243,7 +243,6 @@ def list_testimony_summaries(
         ]
     return sorted(testimonies, key=lambda testimony: testimony.name.casefold())
 
-
 @app.get("/api/search/testimonies", response_model=list[TestimonySearchResult])
 def search_testimonies(
     search: str = Query(min_length=1, max_length=200),
