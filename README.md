@@ -86,18 +86,18 @@ Re-run the indexing command after changing files under `data/metadata`,
 `data/processed`, or the search index mapping; it replaces the indexed sentence
 records for each testimony.
 
-| Endpoint                                                                             | Behavior                                                     |
-| ------------------------------------------------------------------------------------ | ------------------------------------------------------------ |
-| `GET /api/testimonies`                                                               | List testimony summaries, sorted by name.                    |
-| `GET /api/testimonies?search=joshua`                                                 | Search names, case-insensitively.                            |
-| `GET /api/testimonies?language=English`                                              | Filter by language, case-insensitively.                      |
-| `GET /api/testimonies?location=United%20Kingdom`                                     | Filter by location.                                          |
-| `GET /api/languages`                                                                 | List available languages for a filter control.               |
-| `GET /api/testimonies/06052`                                                         | Return the full metadata JSON for a testimony.               |
-| `GET /api/testimonies/06052/data`                                                    | Return the processed transcript sentences for one testimony. |
-| `GET /api/search/testimonies?search=joshua`                                          | Search names and transcript text.                            |
-| `GET /api/search/testimonies?search=home&language=English&location=United%20Kingdom` | Search with optional metadata filters.                       |
-| `GET /api/search/testimonies/06052?q=home`                                           | Return every matching occurrence with a word anchor.         |
+| Endpoint                                                                           | Behavior                                                     |
+| ---------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `GET /api/testimonies`                                                             | List testimony summaries, sorted by name.                    |
+| `GET /api/testimonies?search=joshua`                                               | Search names, case-insensitively.                            |
+| `GET /api/testimonies?language=English`                                            | Filter by language, case-insensitively.                      |
+| `GET /api/testimonies?location=United+Kingdom`                                     | Filter by location.                                          |
+| `GET /api/languages`                                                               | List available languages for a filter control.               |
+| `GET /api/testimonies/06052`                                                       | Return the full metadata JSON for a testimony.               |
+| `GET /api/testimonies/06052/data`                                                  | Return the processed transcript sentences for one testimony. |
+| `GET /api/search/testimonies?search=joshua`                                        | Search names and transcript text.                            |
+| `GET /api/search/testimonies?search=home&language=English&location=United+Kingdom` | Search with optional metadata filters.                       |
+| `GET /api/search/testimonies/06052?q=home`                                         | Return every matching occurrence with a word anchor.         |
 
 List responses include the string `id` (zero-padded to five digits), name,
 language, interview date and location, duration, and

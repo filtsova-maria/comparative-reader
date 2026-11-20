@@ -36,52 +36,61 @@ export function useDocumentPosition({
                 : null;
         });
 
-    const updateCurrentPosition = useCallback(() => {
-        const container = containerRef.current;
-        const wordElements = wordElementsRef.current;
-        if (
-            !container ||
-            wordElements.length === 0 ||
-            wordElements.length !== layout.words.length
-        ) {
-            return;
-        }
-
-        const visibleTop = container.getBoundingClientRect().top;
-        let low = 0;
-        let high = wordElements.length;
-
-        while (low < high) {
-            const middle = Math.floor((low + high) / 2);
+    const updatePosition = useCallback(
+        (syncAnchor = true) => {
+            const container = containerRef.current;
+            const wordElements = wordElementsRef.current;
             if (
-                wordElements[middle].getBoundingClientRect().bottom <=
-                visibleTop
+                !container ||
+                wordElements.length === 0 ||
+                wordElements.length !== layout.words.length
             ) {
-                low = middle + 1;
-            } else {
-                high = middle;
+                return;
             }
-        }
 
-        const wordIndex = Math.min(low, wordElements.length - 1);
-        const word = layout.words[wordIndex];
-        const activeWord = activeWordRef.current;
-        if (
-            !activeWord ||
-            activeWord.layout !== layout ||
-            activeWord.idPrefix !== idPrefix ||
-            activeWord.index !== wordIndex
-        ) {
-            activeWordRef.current = { layout, idPrefix, index: wordIndex };
-            onAnchorChange(wordIndex);
-        }
+            const visibleTop = container.getBoundingClientRect().top;
+            let low = 0;
+            let high = wordElements.length;
 
-        setCurrentPosition((current) =>
-            current?.tape === word.tape && current.seconds === word.seconds
-                ? current
-                : { tape: word.tape, seconds: word.seconds },
-        );
-    }, [idPrefix, layout, onAnchorChange]);
+            while (low < high) {
+                const middle = Math.floor((low + high) / 2);
+                if (
+                    wordElements[middle].getBoundingClientRect().bottom <=
+                    visibleTop
+                ) {
+                    low = middle + 1;
+                } else {
+                    high = middle;
+                }
+            }
+
+            const wordIndex = Math.min(low, wordElements.length - 1);
+            const word = layout.words[wordIndex];
+            const activeWord = activeWordRef.current;
+            if (
+                !activeWord ||
+                activeWord.layout !== layout ||
+                activeWord.idPrefix !== idPrefix ||
+                activeWord.index !== wordIndex
+            ) {
+                activeWordRef.current = { layout, idPrefix, index: wordIndex };
+                if (syncAnchor) {
+                    onAnchorChange(wordIndex);
+                }
+            }
+
+            setCurrentPosition((current) =>
+                current?.tape === word.tape && current.seconds === word.seconds
+                    ? current
+                    : { tape: word.tape, seconds: word.seconds },
+            );
+        },
+        [idPrefix, layout, onAnchorChange],
+    );
+    const updateCurrentPosition = useCallback(
+        () => updatePosition(),
+        [updatePosition],
+    );
 
     useEffect(() => {
         const container = containerRef.current;
@@ -104,7 +113,8 @@ export function useDocumentPosition({
             activeWord?.layout === layout &&
             activeWord.idPrefix === idPrefix &&
             activeWord.index === anchor;
-        if (word && !alreadyAtAnchor) {
+        const didScrollToAnchor = Boolean(word && !alreadyAtAnchor);
+        if (didScrollToAnchor && word) {
             const wordRect = word.getBoundingClientRect();
             const containerTop = container.getBoundingClientRect().top;
             const wordCenter =
@@ -118,8 +128,8 @@ export function useDocumentPosition({
                 ),
             });
         }
-        updateCurrentPosition();
-    }, [anchor, idPrefix, layout, updateCurrentPosition]);
+        updatePosition(!didScrollToAnchor);
+    }, [anchor, idPrefix, layout, updatePosition]);
 
     return {
         containerRef,
