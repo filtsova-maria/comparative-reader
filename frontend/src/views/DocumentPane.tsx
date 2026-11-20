@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
+import { useLocation } from 'react-router';
 import {
     getTestimonyData,
     getTestimonyMetadata,
@@ -12,33 +13,24 @@ import { SearchResultsPopover } from './SearchResultsPopover';
 interface DocumentPaneProps {
     docId: string;
     anchor: number;
-    idPrefix: string;
     role: 'source' | 'target';
-    browsePath: string;
-    browseSearch: string;
-    browseLabel: string;
     search: string;
     onSearchChange: (search: string) => void;
-    secondaryBrowsePath?: string;
-    secondaryBrowseLabel?: string;
     onAnchorChange: (anchor: number) => void;
+    showTargetPicker?: boolean;
 }
 
 export const DocumentPane = ({
     docId,
     anchor,
-    idPrefix,
     role,
-    browsePath,
-    browseSearch,
-    browseLabel,
     search,
     onSearchChange,
-    secondaryBrowsePath,
-    secondaryBrowseLabel,
     onAnchorChange,
+    showTargetPicker = false,
 }: DocumentPaneProps) => {
     const [debouncedSearch, setDebouncedSearch] = useState(search.trim());
+    const location = useLocation();
     const testimonyQuery = useQuery({
         queryKey: ['testimony-data', docId],
         queryFn: ({ signal }) => getTestimonyData(docId, signal),
@@ -64,6 +56,13 @@ export const DocumentPane = ({
     const hasCurrentSearch =
         Boolean(debouncedSearch) && search.trim() === debouncedSearch;
     const testimonyName = metadataQuery.data?.Bio.FullName;
+    const browsePath = `/pick/${role}`;
+    const browseLabel = `Change ${role} document`;
+    const secondaryBrowsePath =
+        role === 'source' && showTargetPicker ? '/pick/target' : undefined;
+    const secondaryBrowseLabel = secondaryBrowsePath
+        ? 'Choose target document'
+        : undefined;
 
     return (
         <section className="min-w-0" aria-label={`${role} document ${docId}`}>
@@ -78,9 +77,9 @@ export const DocumentPane = ({
                     title={testimonyName}
                     documentId={docId}
                     browsePath={browsePath}
-                    browseSearch={browseSearch}
+                    browseSearch={location.search}
                     browseLabel={browseLabel}
-                    idPrefix={idPrefix}
+                    idPrefix={role}
                     search={search}
                     onSearchChange={onSearchChange}
                     secondaryBrowsePath={secondaryBrowsePath}
@@ -99,7 +98,7 @@ export const DocumentPane = ({
                 <Document
                     data={testimonyQuery.data}
                     anchor={anchor}
-                    idPrefix={idPrefix}
+                    idPrefix={role}
                     searchHits={
                         hasCurrentSearch && searchQuery.isSuccess
                             ? searchQuery.data.hits

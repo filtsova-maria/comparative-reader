@@ -1,4 +1,3 @@
-import { useLocation } from 'react-router';
 import { DocumentPane } from './DocumentPane';
 import { useReaderUrlState } from '../hooks/useReaderUrlState';
 
@@ -17,7 +16,6 @@ export const ReaderView = () => {
         updateSourceSearch,
         updateTargetSearch,
     } = useReaderUrlState();
-    const location = useLocation();
 
     return (
         <div className="mx-auto max-w-screen-2xl px-4 py-6">
@@ -31,28 +29,17 @@ export const ReaderView = () => {
                 <DocumentPane
                     docId={sourceId}
                     anchor={sourceAnchor}
-                    idPrefix="source"
                     role="source"
-                    browsePath="/pick/source"
-                    browseSearch={location.search}
-                    browseLabel="Change source document"
                     search={sourceSearch}
                     onSearchChange={updateSourceSearch}
-                    secondaryBrowsePath={targetId ? undefined : '/pick/target'}
-                    secondaryBrowseLabel={
-                        targetId ? undefined : 'Choose target document'
-                    }
                     onAnchorChange={updateSourceAnchor}
+                    showTargetPicker={!targetId}
                 />
                 {targetId && (
                     <DocumentPane
                         docId={targetId}
                         anchor={targetAnchor}
-                        idPrefix="target"
                         role="target"
-                        browsePath="/pick/target"
-                        browseSearch={location.search}
-                        browseLabel="Change target document"
                         search={targetSearch}
                         onSearchChange={updateTargetSearch}
                         onAnchorChange={updateTargetAnchor}
