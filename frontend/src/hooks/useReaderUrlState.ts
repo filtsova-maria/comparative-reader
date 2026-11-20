@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useLayoutEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router';
 
 export type ReaderAnchorKey = 'sa' | 'ta';
@@ -50,7 +50,9 @@ export function withUpdatedSearch(
 export function useReaderUrlState() {
     const [searchParams, setSearchParams] = useSearchParams();
     const searchParamsRef = useRef(searchParams);
-    searchParamsRef.current = searchParams;
+    useLayoutEffect(() => {
+        searchParamsRef.current = searchParams;
+    }, [searchParams]);
 
     const updateAnchor = useCallback(
         (key: ReaderAnchorKey, anchor: number) => {
