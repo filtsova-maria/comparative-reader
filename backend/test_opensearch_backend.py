@@ -1,88 +1,83 @@
+import json
+import tempfile
 import unittest
+from pathlib import Path
 from typing import Any, cast
 from unittest.mock import Mock, patch
 
-from fastapi import HTTPException
+from fastapi.testclient import TestClient
 from opensearchpy import OpenSearch
 
-from opensearch_backend import (
+from backend.anchors import word_count, word_offset_at_utf16
+from backend.dependencies import get_client
+from backend.ids import normalize_id
+from backend.main import app, get_cors_origins
+from backend.opensearch_backend import (
+    INDEX_DEFINITION,
     TESTIMONY_INDEX,
     create_client,
     ensure_indices,
     index_testimony,
+    index_testimonies,
     parse_ranges,
-    word_offset_at_utf16,
 )
-from main import (
-    list_testimony_summaries,
-    search_in_testimony,
-    search_testimonies,
-    to_testimony_data,
-)
+from backend.repository import load_all_metadata, to_testimony_data
 
 
-class FakeIndices:
-    def __init__(self) -> None:
-        self.refreshed: list[str] = []
-        self.existing = set()
-        self.created: list[dict[str, object]] = []
-        self.deleted: list[str] = []
-        self.updated_mappings: list[dict[str, object]] = []
+class BackendTests(unittest.TestCase):
+    def setUp(self) -> None:
+        app.dependency_overrides.clear()
+        self.addCleanup(app.dependency_overrides.clear)
 
-    def exists(self, *, index: str) -> bool:
-        return index in self.existing
+    def client_with(self, client: Mock) -> TestClient:
+        app.dependency_overrides[get_client] = lambda: cast(OpenSearch, client)
+        return TestClient(app)
 
-    def create(self, *, index: str, body: dict[str, object]) -> None:
-        self.created.append({"index": index, "body": body})
-        self.existing.add(index)
+    def test_normalize_id_uses_one_five_digit_form(self) -> None:
+        self.assertEqual(normalize_id(6052), "06052")
+        self.assertEqual(normalize_id("00017"), "00017")
+        with self.assertRaises(ValueError):
+            normalize_id("../6052")
 
-    def put_mapping(self, *, index: str, body: dict[str, object]) -> None:
-        self.updated_mappings.append({"index": index, "body": body})
+    def test_word_anchors_use_javascript_whitespace(self) -> None:
+        self.assertEqual(word_count("one\ufefftwo\u001cthree"), 2)
+        self.assertEqual(word_offset_at_utf16("😀 home again", 3), 1)
 
-    def delete(self, *, index: str) -> None:
-        self.deleted.append(index)
-        self.existing.remove(index)
+    def test_word_offset_uses_utf16_code_units(self) -> None:
+        self.assertEqual(word_offset_at_utf16("a 😀 home", 5), 2)
+        self.assertEqual(word_offset_at_utf16("one\u001ctwo", 4), 0)
 
-    def refresh(self, *, index: str) -> None:
-        self.refreshed.append(index)
+    def test_parse_ranges_uses_utf16_code_units(self) -> None:
+        self.assertEqual(
+            parse_ranges(f"A😀\ue000home\ue001!"),
+            [(3, 7)],
+        )
 
-
-class FakeClient:
-    def __init__(self) -> None:
-        self.indices = FakeIndices()
-        self.indexed: list[dict[str, object]] = []
-        self.deleted: list[dict[str, object]] = []
-
-    def index(self, **kwargs: object) -> None:
-        self.indexed.append(kwargs)
-
-    def delete_by_query(self, **kwargs: object) -> None:
-        self.deleted.append(kwargs)
-
-
-class OpenSearchBackendTests(unittest.TestCase):
-    def test_to_testimony_data_includes_tape_durations(self) -> None:
+    def test_to_testimony_data_leaves_sentence_validation_to_fastapi(self) -> None:
+        sentence = {"idx": 1, "word_start": 3, "text": "one two"}
         testimony = to_testimony_data(
             {
-                "document_id": "06052",
+                "document_id": "6052",
                 "report": {"tapes": 1},
                 "tapes": [
                     {"tape": 1, "report": {"tape_duration_s": 1829.0}},
                     {"tape": 2, "report": {"tape_duration_s": 1834.0}},
                 ],
-                "sentences": [],
+                "sentences": [sentence],
             }
         )
 
         self.assertEqual(
-            testimony.tape_durations,
+            testimony["tape_durations"],
             {1: 1829.0, 2: 1834.0},
         )
+        self.assertEqual(testimony["sentences"][0], sentence)
+        self.assertIsInstance(testimony["sentences"][0], dict)
 
     def test_create_client_uses_opensearch_default_http_port(self) -> None:
         with (
             patch.dict("os.environ", {"OPENSEARCH_URL": "http://search"}),
-            patch("opensearch_backend.OpenSearch") as open_search,
+            patch("backend.opensearch_backend.OpenSearch") as open_search,
         ):
             create_client()
 
@@ -91,176 +86,218 @@ class OpenSearchBackendTests(unittest.TestCase):
             [{"host": "search", "port": 9200}],
         )
 
-    def test_parse_ranges_uses_utf16_code_units(self) -> None:
-        self.assertEqual(
-            parse_ranges(f"A😀\ue000home\ue001!"),
-            [(3, 7)],
-        )
+    def test_cors_origins_are_configurable(self) -> None:
+        with patch.dict("os.environ", {"CORS_ORIGINS": "https://one, https://two"}):
+            self.assertEqual(
+                get_cors_origins(),
+                ["https://one", "https://two"],
+            )
+        with patch.dict("os.environ", {}, clear=True):
+            self.assertEqual(
+                get_cors_origins(),
+                ["http://localhost:5173", "http://127.0.0.1:5173"],
+            )
 
-    def test_word_offset_uses_utf16_offsets_and_returns_word_index(self) -> None:
-        self.assertEqual(word_offset_at_utf16("😀 home again", 3), 1)
-
-    def test_ensure_indices_adds_search_fields_to_existing_index(self) -> None:
-        client = FakeClient()
-        client.indices.existing.add(TESTIMONY_INDEX)
+    def test_ensure_indices_creates_current_version(self) -> None:
+        client = Mock()
+        client.indices.exists.return_value = False
 
         ensure_indices(cast(OpenSearch, client))
 
-        self.assertEqual(client.indices.created, [])
-        self.assertEqual(
-            client.indices.updated_mappings,
-            [
-                {
-                    "index": TESTIMONY_INDEX,
-                    "body": {
-                        "properties": {
-                            "location_search": {
-                                "type": "text",
-                                "analyzer": "folding",
-                            },
-                            "metadata_text": {
-                                "type": "text",
-                                "analyzer": "folding",
-                            },
-                        }
-                    },
-                }
-            ],
+        client.indices.create.assert_called_once_with(
+            index=TESTIMONY_INDEX,
+            body=INDEX_DEFINITION,
         )
 
-    def test_index_testimony_replaces_sentence_records_with_metadata(self) -> None:
-        client = FakeClient()
-        sentence = {
-            "idx": 4,
-            "tape": 2,
-            "start_tc": 1.5,
-            "end_tc": 3.0,
-            "text": "A sentence",
-            "keywords": [
-                {"label": "Memory"},
-                {"label": "Place"},
-                {"label": "Memory"},
-            ],
-        }
-        summary = {
-            "id": "06052",
-            "name": "Ada Example",
-            "language": "English",
-            "location": "United Kingdom",
-        }
-        sentences_doc = {"document_id": "06052", "sentences": [sentence]}
+    def test_ensure_indices_keeps_existing_current_index(self) -> None:
+        client = Mock()
+        client.indices.exists.return_value = True
 
-        indexed_actions: list[dict[str, Any]] = []
+        ensure_indices(cast(OpenSearch, client))
 
-        def capture_actions(*args: Any) -> None:
-            indexed_actions.extend(args[1])
+        client.indices.create.assert_not_called()
 
-        with patch(
-            "opensearch_backend.helpers.bulk",
-            side_effect=capture_actions,
-        ):
-            index_testimony(cast(OpenSearch, client), summary, sentences_doc)
-
-        self.assertEqual(client.indexed, [])
-        self.assertEqual(client.deleted[0]["index"], TESTIMONY_INDEX)
-        self.assertEqual(indexed_actions[0]["_id"], "06052-4")
-        self.assertEqual(indexed_actions[0]["_index"], TESTIMONY_INDEX)
-        self.assertEqual(indexed_actions[0]["_source"]["id"], "06052")
-        self.assertEqual(indexed_actions[0]["_source"]["language"], "English")
-        self.assertEqual(
-            indexed_actions[0]["_source"]["location_search"],
-            "United Kingdom",
+    def test_index_testimony_uses_preprocessed_word_anchors(self) -> None:
+        actions = index_testimony(
+            {
+                "id": "6052",
+                "name": "Ada Example",
+                "language": "English",
+                "location": "United Kingdom",
+            },
+            {
+                "document_id": "06052",
+                "sentences": [
+                    {
+                        "idx": 4,
+                        "tape": 2,
+                        "start_tc": 1.5,
+                        "end_tc": 3.0,
+                        "word_start": 12,
+                        "text": "A sentence",
+                        "keywords": [
+                            {"label": "Memory"},
+                            {"label": "Place"},
+                            {"label": "Memory"},
+                        ],
+                    }
+                ],
+            },
         )
+
+        self.assertEqual(len(actions), 1)
+        self.assertEqual(actions[0]["_index"], TESTIMONY_INDEX)
+        self.assertEqual(actions[0]["_id"], "06052-4")
+        self.assertEqual(actions[0]["_source"]["id"], "06052")
+        self.assertEqual(actions[0]["_source"]["word_start"], 12)
         self.assertEqual(
-            indexed_actions[0]["_source"]["metadata_text"],
+            actions[0]["_source"]["metadata_text"],
             "06052 Ada Example English United Kingdom",
         )
-        self.assertEqual(indexed_actions[0]["_source"]["word_start"], 0)
         self.assertEqual(
-            indexed_actions[0]["_source"]["keyword_labels"],
+            actions[0]["_source"]["keyword_labels"],
             ["Memory", "Place"],
-        )
-        self.assertEqual(client.indices.refreshed, [TESTIMONY_INDEX])
-
-    def test_index_testimony_tracks_cumulative_word_anchors(self) -> None:
-        client = FakeClient()
-        sentences = [
-            {"idx": 0, "tape": 1, "start_tc": 0, "end_tc": 1, "text": "one two"},
-            {"idx": 1, "tape": 1, "start_tc": 1, "end_tc": 2, "text": "three"},
-        ]
-        indexed_actions: list[dict[str, Any]] = []
-
-        with patch(
-            "opensearch_backend.helpers.bulk",
-            side_effect=lambda _client, actions: indexed_actions.extend(actions),
-        ):
-            index_testimony(
-                cast(OpenSearch, client),
-                {"id": "06052", "language": "English"},
-                {"document_id": "06052", "sentences": sentences},
-            )
-
-        self.assertEqual(
-            [action["_source"]["word_start"] for action in indexed_actions],
-            [0, 2],
         )
 
     def test_index_testimony_rejects_mismatched_document_ids(self) -> None:
-        client = FakeClient()
         with self.assertRaisesRegex(ValueError, "must match"):
             index_testimony(
-                cast(OpenSearch, client),
-                {"id": "06052", "language": "English"},
+                {"id": "06052"},
                 {"document_id": "99999", "sentences": []},
             )
-        self.assertEqual(client.indexed, [])
 
-    def test_existing_testimony_list_remains_file_backed(self) -> None:
+    def test_index_testimonies_bulk_indexes_and_refreshes_once(self) -> None:
+        client = Mock()
+        client.indices.exists.return_value = True
+        indexed_actions: list[dict[str, Any]] = []
+
+        with patch(
+            "backend.opensearch_backend.helpers.bulk",
+            side_effect=lambda _client, actions: indexed_actions.extend(actions),
+        ) as bulk:
+            indexed_count = index_testimonies(
+                cast(OpenSearch, client),
+                [
+                    (
+                        {"id": "06052"},
+                        {
+                            "document_id": "06052",
+                            "sentences": [
+                                {
+                                    "idx": 0,
+                                    "tape": 1,
+                                    "start_tc": 0,
+                                    "end_tc": 1,
+                                    "word_start": 0,
+                                    "text": "one",
+                                }
+                            ],
+                        },
+                    ),
+                    ({"id": "09059"}, None),
+                ],
+            )
+
+        self.assertEqual(indexed_count, 1)
+        bulk.assert_called_once()
+        self.assertEqual(len(indexed_actions), 1)
+        client.delete_by_query.assert_called_once_with(
+            index=TESTIMONY_INDEX,
+            body={"query": {"match_all": {}}},
+            params={"conflicts": "proceed", "refresh": "false"},
+        )
+        client.indices.refresh.assert_called_once_with(index=TESTIMONY_INDEX)
+
+    def test_testimony_list_filters_and_paginates(self) -> None:
         metadata = [
             {
                 "Testimony": {
-                    "IntCode": 1,
-                    "LanguageLabel": "English",
-                    "InterviewLocation": "Paris",
+                    "IntCode": identifier,
+                    "LanguageLabel": language,
+                    "InterviewLocation": location,
                 },
-                "Bio": {"FullName": "Ada"},
-            },
-            {
-                "Testimony": {
-                    "IntCode": 2,
-                    "LanguageLabel": "English",
-                    "InterviewLocation": "Paris",
-                },
-                "Bio": {"FullName": "Albert"},
-            },
-            {
-                "Testimony": {
-                    "IntCode": 3,
-                    "LanguageLabel": "Czech",
-                    "InterviewLocation": "London",
-                },
-                "Bio": {"FullName": "Ada French"},
-            },
+                "Bio": {"FullName": name},
+            }
+            for identifier, name, language, location in [
+                (1, "Ada", "English", "Paris"),
+                (2, "Albert", "English", "Paris"),
+                (3, "Ada French", "Czech", "London"),
+            ]
         ]
-        fake_os = Mock()
-        with (
-            patch("main.load_all_metadata", return_value=metadata),
-            patch("main.os_client", fake_os),
+        with patch(
+            "backend.routers.testimonies.load_all_metadata",
+            return_value=metadata,
+        ) as load:
+            with TestClient(app) as client:
+                response = client.get(
+                    "/api/testimonies",
+                    params={
+                        "search": "a",
+                        "language": " ENGLISH ",
+                        "location": " ARIS ",
+                        "limit": 1,
+                        "offset": 1,
+                    },
+                )
+                languages = client.get("/api/languages")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([item["name"] for item in response.json()], ["Albert"])
+        self.assertEqual(languages.json(), ["Czech", "English"])
+        self.assertEqual(load.call_count, 2)
+
+    def test_metadata_cache_does_not_reload_files(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            metadata_dir = Path(temporary_directory)
+            (metadata_dir / "1.json").write_text('{"id": 1}', encoding="utf-8")
+            with (
+                patch("backend.repository.METADATA_DIR", metadata_dir),
+                patch("backend.repository.json.loads", wraps=json.loads) as loads,
+            ):
+                load_all_metadata.cache_clear()
+                first = load_all_metadata()
+                (metadata_dir / "2.json").write_text('{"id": 2}', encoding="utf-8")
+                second = load_all_metadata()
+                load_all_metadata.cache_clear()
+
+        self.assertIs(first, second)
+        self.assertEqual(len(second), 1)
+        self.assertEqual(loads.call_count, 1)
+
+    def test_testimony_data_route_validates_response_once(self) -> None:
+        sentence = {
+            "idx": 0,
+            "tape": 1,
+            "word_start": 0,
+            "start_char": 0,
+            "end_char": 3,
+            "text": "one",
+            "start_tc": 0.0,
+            "end_tc": 1.0,
+            "tc_source": "matched",
+            "matched_ratio": 1.0,
+            "keywords": [],
+        }
+        payload = {
+            "document_id": "06052",
+            "report": {"tapes": 1},
+            "tapes": [{"tape": 1, "report": {"tape_duration_s": 10.0}}],
+            "sentences": [sentence],
+        }
+        with patch(
+            "backend.routers.testimonies.load_testimony_data",
+            return_value=payload,
         ):
-            results = list_testimony_summaries(
-                search="a",
-                language=" ENGLISH ",
-                location=" ARIS ",
-            )
+            with TestClient(app) as client:
+                response = client.get("/api/testimonies/6052/data")
 
-        self.assertEqual([result.name for result in results], ["Ada", "Albert"])
-        fake_os.search.assert_not_called()
-        fake_os.msearch.assert_not_called()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["sentences"], [sentence])
+        self.assertEqual(response.json()["tape_durations"], {"1": 10.0})
 
-    def test_cross_search_merges_matches_from_single_sentence_index(self) -> None:
+    def test_cross_search_uses_dependency_override(self) -> None:
         name_hit = {
             "_source": {
-                "id": "06052",
                 "document_id": "06052",
                 "name": "Name Match",
                 "language": "English",
@@ -288,7 +325,6 @@ class OpenSearchBackendTests(unittest.TestCase):
         }
         transcript_hit = {
             "_source": {
-                "id": "06052",
                 "document_id": "06052",
                 "name": "Name Match",
                 "language": "English",
@@ -318,146 +354,69 @@ class OpenSearchBackendTests(unittest.TestCase):
                 }
             },
         }
-        transcript_only_hit = {
-            "_source": {
-                "id": "09059",
-                "document_id": "09059",
-                "name": "Transcript Match",
-                "language": "English",
-                "interview_date": None,
-                "location": None,
-                "duration": None,
-                "thumbnail_url": None,
-            },
-            "inner_hits": {
-                "sentences": {
-                    "hits": {
-                        "total": {"value": 2},
-                        "hits": [],
-                    }
-                }
-            },
-        }
-        fake_os = Mock()
-        fake_os.msearch.return_value = {
+        client = Mock()
+        client.indices.exists.return_value = True
+        client.msearch.return_value = {
             "responses": [
                 {"hits": {"hits": [name_hit]}},
-                {"hits": {"hits": [transcript_hit, transcript_only_hit]}},
+                {"hits": {"hits": [transcript_hit]}},
             ]
         }
 
-        with patch("main.os_client", fake_os):
-            results = search_testimonies(
-                search="home",
-                language=" English ",
-                location="Unit",
+        with self.client_with(client) as test_client:
+            response = test_client.get(
+                "/api/search/testimonies",
+                params={
+                    "search": "home",
+                    "language": " English ",
+                    "location": "Unit",
+                },
             )
 
-        self.assertEqual([result.id for result in results], ["06052", "09059"])
-        self.assertTrue(results[0].name_match)
-        self.assertEqual(results[0].transcript_hits, 4)
-        self.assertEqual(results[0].snippets[0].anchor, 7)
-        self.assertEqual(
-            [(item.start, item.end) for item in results[0].snippets[0].ranges],
-            [(3, 7)],
-        )
-        self.assertFalse(results[1].name_match)
-        self.assertEqual(results[1].transcript_hits, 2)
-        requests = fake_os.msearch.call_args.kwargs["body"]
+        result = response.json()[0]
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(result["transcript_hits"], 4)
+        self.assertEqual(result["snippets"][0]["anchor"], 7)
+        requests = client.msearch.call_args.kwargs["body"]
         self.assertEqual(
             [request["index"] for request in requests[::2]],
             [TESTIMONY_INDEX, TESTIMONY_INDEX],
         )
-        for request in requests[1::2]:
-            self.assertEqual(
-                request["query"]["bool"]["filter"],
-                [
-                    {"term": {"language": "English"}},
-                    {
-                        "multi_match": {
-                            "query": "Unit",
-                            "type": "bool_prefix",
-                            "fields": ["location_search"],
-                            "operator": "and",
-                        }
-                    },
-                ],
-            )
-            self.assertEqual(
-                request["collapse"]["inner_hits"]["size"],
-                3,
-            )
-        transcript_query = requests[3]["query"]["bool"]
         self.assertEqual(
-            transcript_query["must"],
+            requests[1]["query"]["bool"]["filter"],
             [
+                {"term": {"language": "English"}},
                 {
                     "multi_match": {
-                        "query": "home",
+                        "query": "Unit",
                         "type": "bool_prefix",
-                        "fields": ["text"],
+                        "fields": ["location_search"],
                         "operator": "and",
                     }
-                }
+                },
             ],
-        )
-        metadata_query = requests[1]["query"]["bool"]["must"][0]["bool"]
-        self.assertEqual(metadata_query["minimum_should_match"], 1)
-        self.assertEqual(
-            metadata_query["should"][0]["multi_match"]["type"],
-            "bool_prefix",
-        )
-        self.assertIn(
-            "metadata_text",
-            metadata_query["should"][0]["multi_match"]["fields"],
-        )
-        self.assertEqual(
-            metadata_query["should"][1]["match"]["metadata_text"]["fuzziness"],
-            "AUTO",
         )
 
     def test_cross_search_reports_uninitialized_index(self) -> None:
-        fake_os = Mock()
-        fake_os.indices.exists.return_value = False
+        client = Mock()
+        client.indices.exists.return_value = False
 
-        with patch("main.os_client", fake_os):
-            with self.assertRaises(HTTPException) as error:
-                search_testimonies(
-                    search="hest",
-                    language=None,
-                    location=None,
-                )
+        with self.client_with(client) as test_client:
+            response = test_client.get(
+                "/api/search/testimonies",
+                params={"search": "home"},
+            )
 
-        self.assertEqual(error.exception.status_code, 503)
-        self.assertIn("backend.index_opensearch", error.exception.detail)
-        fake_os.msearch.assert_not_called()
+        self.assertEqual(response.status_code, 503)
+        self.assertIn("backend.index_opensearch", response.json()["detail"])
+        client.msearch.assert_not_called()
 
-    def test_cross_search_reports_item_level_opensearch_errors(self) -> None:
-        fake_os = Mock()
-        fake_os.indices.exists.return_value = True
-        fake_os.msearch.return_value = {
-            "responses": [
-                {"error": {"reason": "index or query error"}},
-                {"hits": {"hits": []}},
-            ]
-        }
-
-        with patch("main.os_client", fake_os):
-            with self.assertRaises(HTTPException) as error:
-                search_testimonies(
-                    search="hest",
-                    language=None,
-                    location=None,
-                )
-
-        self.assertEqual(error.exception.status_code, 503)
-        self.assertIn("index or query error", error.exception.detail)
-
-    def test_document_search_groups_occurrences_by_sentence(self) -> None:
-        fake_os = Mock()
-        fake_os.search.return_value = {
+    def test_document_search_reports_truncated_hits(self) -> None:
+        client = Mock()
+        client.indices.exists.return_value = True
+        client.search.return_value = {
             "hits": {
-                "total": {"value": 1},
+                "total": {"value": 2},
                 "hits": [
                     {
                         "_source": {
@@ -475,38 +434,36 @@ class OpenSearchBackendTests(unittest.TestCase):
                 ],
             }
         }
-        with patch("main.os_client", fake_os):
-            response = search_in_testimony("6052", "hom")
 
-        self.assertEqual(response.total_sentences, 1)
-        self.assertEqual([hit.idx for hit in response.hits], [8])
-        self.assertEqual([hit.anchor for hit in response.hits], [11])
-        self.assertEqual(
-            [
-                [(item.start, item.end) for item in hit.ranges]
-                for hit in response.hits
-            ],
-            [[(3, 7), (8, 12)]],
-        )
-        query_body = fake_os.search.call_args.kwargs["body"]
-        self.assertEqual(fake_os.search.call_args.kwargs["index"], TESTIMONY_INDEX)
+        with self.client_with(client) as test_client:
+            response = test_client.get(
+                "/api/search/testimonies/6052",
+                params={"q": "hom"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["truncated"])
+        self.assertEqual(response.json()["total_sentences"], 2)
+        self.assertEqual(response.json()["hits"][0]["anchor"], 11)
+        query_body = client.search.call_args.kwargs["body"]
+        self.assertEqual(client.search.call_args.kwargs["index"], TESTIMONY_INDEX)
+        self.assertEqual(query_body["size"], 5000)
+        self.assertTrue(query_body["track_total_hits"])
         self.assertEqual(
             query_body["query"]["bool"]["filter"],
             [{"term": {"document_id": "06052"}}],
         )
-        self.assertEqual(
-            query_body["query"]["bool"]["must"],
-            [
-                {
-                    "multi_match": {
-                        "query": "hom",
-                        "type": "bool_prefix",
-                        "fields": ["text"],
-                        "operator": "and",
-                    }
-                }
-            ],
-        )
+
+    def test_document_search_rejects_non_numeric_id(self) -> None:
+        client = Mock()
+        with self.client_with(client) as test_client:
+            response = test_client.get(
+                "/api/search/testimonies/abc",
+                params={"q": "term"},
+            )
+
+        self.assertEqual(response.status_code, 404)
+        client.indices.exists.assert_not_called()
 
 
 if __name__ == "__main__":

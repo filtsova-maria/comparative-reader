@@ -1,10 +1,12 @@
 import os
-import re
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from typing import Any
 from urllib.parse import urlparse
 
 from opensearchpy import OpenSearch, helpers
+
+from backend.anchors import add_word_starts
+from backend.ids import normalize_id
 
 TESTIMONY_INDEX = "testimony_sentences"
 PRE_TAG = "\ue000"
@@ -63,7 +65,6 @@ INDEX_DEFINITION: dict[str, Any] = {
             "text": {
                 "type": "text",
                 "analyzer": "standard",
-                "fields": {"exact": {"type": "text", "analyzer": "standard"}},
             },
             "keyword_labels": {"type": "keyword"},
         }
@@ -87,87 +88,88 @@ def create_client() -> OpenSearch:
 
 
 def ensure_indices(client: OpenSearch) -> None:
-    if client.indices.exists(index=TESTIMONY_INDEX):
-        client.indices.put_mapping(
-            index=TESTIMONY_INDEX,
-            body={
-                "properties": {
-                    "location_search": INDEX_DEFINITION["mappings"]["properties"][
-                        "location_search"
-                    ],
-                    "metadata_text": INDEX_DEFINITION["mappings"]["properties"][
-                        "metadata_text"
-                    ],
-                }
-            },
-        )
-    else:
+    if not client.indices.exists(index=TESTIMONY_INDEX):
         client.indices.create(index=TESTIMONY_INDEX, body=INDEX_DEFINITION)
 
 
 def index_testimony(
-    client: OpenSearch,
     summary: Mapping[str, Any],
     sentences_doc: Mapping[str, Any] | None,
-) -> None:
-    document_id = str(summary["id"])
+) -> list[dict[str, Any]]:
+    document_id = normalize_id(summary["id"])
     if (
         sentences_doc is not None
-        and str(sentences_doc["document_id"]) != document_id
+        and normalize_id(sentences_doc["document_id"]) != document_id
     ):
         raise ValueError(
             "Testimony summary id must match the sentences document_id"
         )
 
+    if sentences_doc is None:
+        return []
+
+    normalized_summary = {**summary, "id": document_id}
+    return [
+        {
+            "_index": TESTIMONY_INDEX,
+            "_id": f"{document_id}-{sentence['idx']}",
+            "_source": {
+                **normalized_summary,
+                "document_id": document_id,
+                "location_search": summary.get("location") or "",
+                "metadata_text": " ".join(
+                    str(normalized_summary[field])
+                    for field in (
+                        "id",
+                        "name",
+                        "language",
+                        "interview_date",
+                        "location",
+                    )
+                    if normalized_summary.get(field)
+                ),
+                "idx": sentence["idx"],
+                "tape": sentence["tape"],
+                "start_tc": sentence["start_tc"],
+                "end_tc": sentence["end_tc"],
+                "word_start": sentence["word_start"],
+                "text": sentence["text"],
+                "keyword_labels": sorted(
+                    {
+                        keyword["label"]
+                        for keyword in sentence.get("keywords", [])
+                    }
+                ),
+            },
+        }
+        for sentence in add_word_starts(sentences_doc["sentences"])
+    ]
+
+
+def index_testimonies(
+    client: OpenSearch,
+    testimonies: Iterable[
+        tuple[Mapping[str, Any], Mapping[str, Any] | None]
+    ],
+) -> int:
+    ensure_indices(client)
     client.delete_by_query(
         index=TESTIMONY_INDEX,
-        body={"query": {"term": {"document_id": document_id}}},
+        body={"query": {"match_all": {}}},
         params={"conflicts": "proceed", "refresh": "false"},
     )
+    indexed_count = 0
 
-    if sentences_doc is not None:
-        actions = []
-        word_start = 0
-        for sentence in sentences_doc["sentences"]:
-            actions.append(
-                {
-                    "_index": TESTIMONY_INDEX,
-                    "_id": f"{document_id}-{sentence['idx']}",
-                    "_source": {
-                        **summary,
-                        "document_id": document_id,
-                        "location_search": summary.get("location") or "",
-                        "metadata_text": " ".join(
-                            str(summary[field])
-                            for field in (
-                                "id",
-                                "name",
-                                "language",
-                                "interview_date",
-                                "location",
-                            )
-                            if summary.get(field)
-                        ),
-                        "idx": sentence["idx"],
-                        "tape": sentence["tape"],
-                        "start_tc": sentence["start_tc"],
-                        "end_tc": sentence["end_tc"],
-                        "word_start": word_start,
-                        "text": sentence["text"],
-                        "keyword_labels": sorted(
-                            {
-                                keyword["label"]
-                                for keyword in sentence.get("keywords", [])
-                            }
-                        ),
-                    },
-                }
-            )
-            word_start += len(sentence["text"].split())
-        if actions:
-            helpers.bulk(client, actions)
+    def iter_actions() -> Iterable[dict[str, Any]]:
+        nonlocal indexed_count
+        for summary, sentences_doc in testimonies:
+            actions = index_testimony(summary, sentences_doc)
+            indexed_count += len(actions)
+            yield from actions
 
+    helpers.bulk(client, iter_actions())
     client.indices.refresh(index=TESTIMONY_INDEX)
+    return indexed_count
 
 
 def text_query(query: str) -> dict[str, Any]:
@@ -197,22 +199,3 @@ def parse_ranges(tagged: str) -> list[tuple[int, int]]:
         else:
             position += 2 if ord(character) > 0xFFFF else 1
     return ranges
-
-
-def word_offset_at_utf16(text: str, offset: int) -> int:
-    """
-    Return the zero-based index of the word containing a UTF-16 offset.
-
-    OpenSearch highlight offsets are measured in UTF-16 code units, so offsets
-    on text with surrogate-pair characters must be compared after encoding the
-    corresponding text slices as UTF-16. If the offset is not within a word,
-    this function returns the first word's index.
-
-    This ensures correct match highlighting.
-    """
-    for word_index, match in enumerate(re.finditer(r"\S+", text)):
-        start = len(text[: match.start()].encode("utf-16-le")) // 2
-        end = len(text[: match.end()].encode("utf-16-le")) // 2
-        if start <= offset < end:
-            return word_index
-    return 0

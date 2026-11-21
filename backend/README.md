@@ -14,6 +14,12 @@ python3 -m venv venv
 python -m pip install -r backend/requirements.txt
 ```
 
+For backend tests, install the test dependencies as well:
+
+```sh
+python -m pip install -r backend/requirements-dev.txt
+```
+
 To compile-check the Python files:
 
 ```sh
@@ -47,9 +53,16 @@ is at `http://127.0.0.1:8000/docs`. To use another OpenSearch URL, set
 export OPENSEARCH_URL=http://127.0.0.1:9200
 ```
 
-Re-run `python -m backend.index_opensearch` after changing metadata,
-processed sentences, or the search index mapping. It refreshes the indexed
-sentence records for each testimony.
+Set `CORS_ORIGINS` to a comma-separated list to override the default local
+frontend origins.
+
+The testimony list endpoint returns at most 100 records by default. Use
+`limit` (up to 500) and `offset` to page through results. Metadata is cached
+until the API process restarts.
+
+Re-run transcript preprocessing and `python -m backend.index_opensearch` after
+changing transcripts, metadata, or the search index mapping. The indexer
+rebuilds the concrete `testimony_sentences` index in bulk.
 
 Stop the local search services when finished:
 

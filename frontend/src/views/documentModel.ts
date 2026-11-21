@@ -43,7 +43,7 @@ export function buildDocumentLayout(
 
             const word: IndexedWord = {
                 kind: 'word',
-                index: words.length,
+                index: sentence.word_start + sentenceWordIndex,
                 text: token,
                 tape: sentence.tape,
                 seconds:

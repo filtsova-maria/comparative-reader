@@ -8,10 +8,12 @@ function sentence(
     text: string,
     start_tc: number,
     end_tc: number,
+    word_start: number,
 ): TestimonySentence {
     return {
         idx,
         tape,
+        word_start,
         start_char: 0,
         end_char: text.length,
         text,
@@ -26,8 +28,8 @@ function sentence(
 describe('buildDocumentLayout', () => {
     it('indexes words across sentences and interpolates word start times', () => {
         const layout = buildDocumentLayout([
-            sentence(0, 1, 'One two', 10, 14),
-            sentence(1, 2, 'three', 50, 54),
+            sentence(0, 1, 'One two', 10, 14, 0),
+            sentence(1, 2, 'three', 50, 54, 2),
         ]);
 
         expect(
@@ -49,7 +51,7 @@ describe('buildDocumentLayout', () => {
 
     it('preserves sentence whitespace when splitting words', () => {
         const text = '  word,\tthen  next ';
-        const layout = buildDocumentLayout([sentence(0, 1, text, 0, 3)]);
+        const layout = buildDocumentLayout([sentence(0, 1, text, 0, 3, 0)]);
         const renderedText = layout.segments[0].parts
             .map((part) => (typeof part === 'string' ? part : part.text))
             .join('');

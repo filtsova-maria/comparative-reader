@@ -8,6 +8,7 @@ function sentence(idx: number, text: string): TestimonySentence {
     return {
         idx,
         tape: 1,
+        word_start: idx === 4 ? 0 : 3,
         start_char: 0,
         end_char: text.length,
         text,

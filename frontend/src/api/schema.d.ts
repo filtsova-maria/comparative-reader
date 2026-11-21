@@ -129,6 +129,8 @@ export interface components {
             total_sentences: number;
             /** Hits */
             hits: components['schemas']['DocHit'][];
+            /** Truncated */
+            truncated: boolean;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -157,6 +159,8 @@ export interface components {
             idx: number;
             /** Tape */
             tape: number;
+            /** Word Start */
+            word_start: number;
             /** Start Char */
             start_char: number;
             /** End Char */
@@ -176,19 +180,6 @@ export interface components {
             matched_ratio: number;
             /** Keywords */
             keywords: components['schemas']['Keyword'][];
-        };
-        /** Snippet */
-        Snippet: {
-            /** Idx */
-            idx: number;
-            /** Tape */
-            tape: number;
-            /** Text */
-            text: string;
-            /** Anchor */
-            anchor: number;
-            /** Ranges */
-            ranges: components['schemas']['Range'][];
         };
         /** TestimonyBio */
         TestimonyBio: {
@@ -243,7 +234,7 @@ export interface components {
              */
             transcript_hits: number;
             /** Snippets */
-            snippets?: components['schemas']['Snippet'][];
+            snippets?: components['schemas']['DocHit'][];
         };
         /** TestimonySummary */
         TestimonySummary: {
@@ -290,6 +281,8 @@ export interface operations {
                 search?: string | null;
                 language?: string | null;
                 location?: string | null;
+                limit?: number;
+                offset?: number;
             };
             header?: never;
             path?: never;

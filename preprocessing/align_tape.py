@@ -37,7 +37,12 @@ from pathlib import Path
 
 import numpy as np
 
-VERSION = 2
+REPO_DIR = Path(__file__).resolve().parents[1]
+if str(REPO_DIR) not in sys.path:
+    sys.path.insert(0, str(REPO_DIR))
+
+from backend.anchors import word_count
+from backend.ids import normalize_id
 
 TOK = re.compile(r"\w+", re.UNICODE)
 TAG = re.compile(r"<[^>]*>") # strip HTML tags from VTT text
@@ -279,7 +284,7 @@ def process_transcripts(txt_paths, metadata_dir, output_dir, strict=False):
             raise ValueError(
                 f"cannot infer document and tape numbers from {txt_path.name}"
             )
-        document_id = f"{int(match.group('document_id')):05d}"
+        document_id = normalize_id(match.group("document_id"))
         tape = int(match.group("tape"))
         tapes = grouped.setdefault(document_id, {})
         if tape in tapes:
@@ -300,6 +305,7 @@ def process_transcripts(txt_paths, metadata_dir, output_dir, strict=False):
         tape_records = []
         document_sentences = []
         document_warnings = []
+        document_word_start = 0
 
         for tape, txt_path in sorted(tape_paths.items()):
             vtt_path = txt_path.with_suffix(".vtt")
@@ -314,6 +320,8 @@ def process_transcripts(txt_paths, metadata_dir, output_dir, strict=False):
             sentence_offset = len(document_sentences)
             for sentence in sentences:
                 sentence["idx"] += sentence_offset
+                sentence["word_start"] = document_word_start
+                document_word_start += word_count(sentence["text"])
             document_sentences.extend(sentences)
 
             tape_warnings = report["warnings"]
@@ -333,7 +341,6 @@ def process_transcripts(txt_paths, metadata_dir, output_dir, strict=False):
             )
 
         payload = {
-            "version": VERSION,
             "document_id": document_id,
             "offset_unit": "utf-16",
             "metadata": metadata_path.name,

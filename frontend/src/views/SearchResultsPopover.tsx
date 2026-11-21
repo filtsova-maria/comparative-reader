@@ -95,8 +95,9 @@ export const SearchResultsPopover = ({
                     {result && (
                         <>
                             <p role="status" className="mb-2 mt-0">
-                                {result.total_sentences} matched sentence
-                                {result.total_sentences > 1 && 's'}
+                                {result.truncated
+                                    ? `Showing ${result.hits.length} of ${result.total_sentences} matched sentences`
+                                    : `${result.total_sentences} matched sentence${result.total_sentences === 1 ? '' : 's'}`}
                             </p>
                             {result.hits.length === 0 ? (
                                 <p className="m-0">No occurrences found.</p>

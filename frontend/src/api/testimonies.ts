@@ -24,6 +24,12 @@ export async function listTestimonyMetadata(
     if (params?.location) {
         searchParams.set('location', params.location);
     }
+    if (params?.limit !== undefined) {
+        searchParams.set('limit', String(params.limit));
+    }
+    if (params?.offset !== undefined) {
+        searchParams.set('offset', String(params.offset));
+    }
 
     const query = searchParams.toString();
     const response = await fetch(

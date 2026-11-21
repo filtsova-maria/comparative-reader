@@ -56,7 +56,6 @@ class ProcessTranscriptsTests(unittest.TestCase):
         self.assertEqual(
             list(result),
             [
-                "version",
                 "document_id",
                 "offset_unit",
                 "metadata",
@@ -65,7 +64,6 @@ class ProcessTranscriptsTests(unittest.TestCase):
                 "sentences",
             ],
         )
-        self.assertEqual(result["version"], 2)
         self.assertEqual(result["document_id"], "06052")
         self.assertEqual([tape["tape"] for tape in result["tapes"]], [1, 2])
         self.assertEqual(
@@ -77,6 +75,10 @@ class ProcessTranscriptsTests(unittest.TestCase):
             [1, 2],
         )
         self.assertEqual(
+            [sentence["word_start"] for sentence in result["sentences"]],
+            [0, 3],
+        )
+        self.assertEqual(
             result["report"],
             {"tapes": 2, "sentences": 2, "warnings": []},
         )
@@ -85,6 +87,7 @@ class ProcessTranscriptsTests(unittest.TestCase):
             {
                 "idx",
                 "tape",
+                "word_start",
                 "start_char",
                 "end_char",
                 "text",
