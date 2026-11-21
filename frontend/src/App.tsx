@@ -7,10 +7,7 @@ import {
     useSearchParams,
 } from 'react-router';
 import { BrowseView, type BrowseMode, ReaderView } from './views';
-
-function hasSource(searchParams: URLSearchParams) {
-    return Boolean(searchParams.get('s')?.trim());
-}
+import { buildReaderSearchParams, parseReaderUrl } from './readerUrl';
 
 function RootRedirect() {
     const [searchParams] = useSearchParams();
@@ -19,7 +16,9 @@ function RootRedirect() {
     return (
         <Navigate
             to={{
-                pathname: hasSource(searchParams) ? '/read' : '/pick/source',
+                pathname: parseReaderUrl(searchParams).source.id
+                    ? '/read'
+                    : '/pick/source',
                 search: location.search,
             }}
             replace
@@ -30,31 +29,21 @@ function RootRedirect() {
 function BrowseRoute({ mode }: { mode: BrowseMode }) {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
-    const excludedDocIds = ['s', 't']
-        .map((param) => searchParams.get(param)?.trim())
-        .filter((docId): docId is string => Boolean(docId));
+    const readerUrl = parseReaderUrl(searchParams);
+    const excludedDocIds = [readerUrl.source.id, readerUrl.target.id].filter(
+        Boolean,
+    );
 
     function handleDocumentSelect(
         docId: string,
         anchor = 0,
         fullTextSearch?: string,
     ) {
-        const nextSearchParams = new URLSearchParams(searchParams);
-        const searchKey = mode === 'source' ? 'sq' : 'tq';
-        if (fullTextSearch?.trim()) {
-            nextSearchParams.set(searchKey, fullTextSearch);
-        } else {
-            nextSearchParams.delete(searchKey);
-        }
-
-        if (mode === 'source') {
-            nextSearchParams.set('s', docId);
-            nextSearchParams.set('sa', String(anchor));
-            nextSearchParams.delete('sel');
-        } else {
-            nextSearchParams.set('t', docId);
-            nextSearchParams.set('ta', String(anchor));
-        }
+        const nextSearchParams = buildReaderSearchParams(searchParams, mode, {
+            id: docId,
+            anchor,
+            search: fullTextSearch ?? '',
+        });
 
         navigate({
             pathname: '/read',
@@ -76,7 +65,7 @@ function ReadRoute() {
     const [searchParams] = useSearchParams();
     const location = useLocation();
 
-    if (!hasSource(searchParams)) {
+    if (!parseReaderUrl(searchParams).source.id) {
         return (
             <Navigate
                 to={{ pathname: '/pick/source', search: location.search }}

@@ -1,4 +1,4 @@
-import { serverUrl } from './const';
+import { fetchJson } from './fetchJson';
 import type {
     ListTestimonyParams,
     TestimonyData,
@@ -9,68 +9,47 @@ import type {
     TestimonySummary,
 } from './types';
 
+function buildQueryParams(
+    params: Record<string, string | number | null | undefined>,
+    omitEmpty = false,
+): URLSearchParams {
+    const searchParams = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+        if (
+            value === undefined ||
+            value === null ||
+            (omitEmpty && value === '')
+        ) {
+            continue;
+        }
+        searchParams.set(key, String(value));
+    }
+    return searchParams;
+}
+
 export async function listTestimonyMetadata(
     params: ListTestimonyParams = {},
     signal?: AbortSignal,
 ): Promise<TestimonySummary[]> {
-    const searchParams = new URLSearchParams();
-
-    if (params?.search) {
-        searchParams.set('search', params.search);
-    }
-    if (params?.language) {
-        searchParams.set('language', params.language);
-    }
-    if (params?.location) {
-        searchParams.set('location', params.location);
-    }
-    if (params?.limit !== undefined) {
-        searchParams.set('limit', String(params.limit));
-    }
-    if (params?.offset !== undefined) {
-        searchParams.set('offset', String(params.offset));
-    }
-
+    const searchParams = buildQueryParams(params, true);
     const query = searchParams.toString();
-    const response = await fetch(
-        `${serverUrl}/api/testimonies${query ? `?${query}` : ''}`,
-        { signal },
+    return fetchJson(
+        `/api/testimonies${query ? `?${query}` : ''}`,
+        'Failed to fetch testimonies',
+        signal,
     );
-
-    if (!response.ok) {
-        throw new Error(
-            `Failed to fetch testimonies: ${response.status} ${response.statusText}`,
-        );
-    }
-
-    return response.json();
 }
 
 export async function searchTestimonies(
     params: SearchTestimonyParams,
     signal?: AbortSignal,
 ): Promise<TestimonySearchResult[]> {
-    const searchParams = new URLSearchParams();
-    searchParams.set('search', params.search);
-    if (params.language) {
-        searchParams.set('language', params.language);
-    }
-    if (params.location) {
-        searchParams.set('location', params.location);
-    }
-
-    const response = await fetch(
-        `${serverUrl}/api/search/testimonies?${searchParams.toString()}`,
-        { signal },
+    const searchParams = buildQueryParams(params);
+    return fetchJson(
+        `/api/search/testimonies?${searchParams.toString()}`,
+        'Failed to search testimonies',
+        signal,
     );
-
-    if (!response.ok) {
-        throw new Error(
-            `Failed to search testimonies: ${response.status} ${response.statusText}`,
-        );
-    }
-
-    return response.json();
 }
 
 export async function searchWithinTestimony(
@@ -78,65 +57,36 @@ export async function searchWithinTestimony(
     query: string,
     signal?: AbortSignal,
 ): Promise<TestimonySearchResponse> {
-    const searchParams = new URLSearchParams({ q: query });
-    const response = await fetch(
-        `${serverUrl}/api/search/testimonies/${encodeURIComponent(testimonyId)}?${searchParams.toString()}`,
-        { signal },
+    const searchParams = buildQueryParams({ q: query });
+    return fetchJson(
+        `/api/search/testimonies/${encodeURIComponent(testimonyId)}?${searchParams.toString()}`,
+        'Failed to search testimony',
+        signal,
     );
-
-    if (!response.ok) {
-        throw new Error(
-            `Failed to search testimony: ${response.status} ${response.statusText}`,
-        );
-    }
-
-    return response.json();
 }
 
 export async function listLanguages(signal?: AbortSignal): Promise<string[]> {
-    const response = await fetch(`${serverUrl}/api/languages`, { signal });
-
-    if (!response.ok) {
-        throw new Error(
-            `Failed to fetch languages: ${response.status} ${response.statusText}`,
-        );
-    }
-
-    return response.json();
+    return fetchJson('/api/languages', 'Failed to fetch languages', signal);
 }
 
 export async function getTestimonyMetadata(
     testimonyId: string,
     signal?: AbortSignal,
 ): Promise<TestimonyMetadata> {
-    const response = await fetch(
-        `${serverUrl}/api/testimonies/${encodeURIComponent(testimonyId)}`,
-        { signal },
+    return fetchJson(
+        `/api/testimonies/${encodeURIComponent(testimonyId)}`,
+        'Failed to fetch testimony metadata',
+        signal,
     );
-
-    if (!response.ok) {
-        throw new Error(
-            `Failed to fetch testimony metadata: ${response.status} ${response.statusText}`,
-        );
-    }
-
-    return response.json();
 }
 
 export async function getTestimonyData(
     testimonyId: string,
     signal?: AbortSignal,
 ): Promise<TestimonyData> {
-    const response = await fetch(
-        `${serverUrl}/api/testimonies/${encodeURIComponent(testimonyId)}/data`,
-        { signal },
+    return fetchJson(
+        `/api/testimonies/${encodeURIComponent(testimonyId)}/data`,
+        'Failed to fetch testimony data',
+        signal,
     );
-
-    if (!response.ok) {
-        throw new Error(
-            `Failed to fetch testimony data: ${response.status} ${response.statusText}`,
-        );
-    }
-
-    return response.json();
 }

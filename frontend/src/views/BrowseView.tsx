@@ -1,13 +1,10 @@
-import { useQuery } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
-import {
-    listLanguages,
-    listTestimonyMetadata,
-    searchTestimonies,
-} from '../api/testimonies';
-import { BrowseFilters } from './BrowseFilters';
-import { TestimonyCard } from './TestimonyCard';
+import { useTestimonies, useTestimonyLanguages } from '../api/queries';
+import { useDebouncedValue } from '../hooks/useDebouncedValue';
+import { parseReaderUrl } from '../readerUrl';
+import { BrowseFilters } from '../components/BrowseFilters';
+import { TestimonyCard } from '../components/TestimonyCard';
 
 export type BrowseMode = 'source' | 'target';
 
@@ -25,55 +22,21 @@ export const BrowseView = ({
     onExcerptSelect,
 }: BrowseViewProps) => {
     const [searchParams] = useSearchParams();
-    const initialSearch =
-        searchParams.get(mode === 'source' ? 'sq' : 'tq') ?? '';
+    const initialSearch = parseReaderUrl(searchParams)[mode].search;
     const [search, setSearch] = useState(initialSearch);
     const [language, setLanguage] = useState('');
     const [location, setLocation] = useState('');
-    const [debouncedFilters, setDebouncedFilters] = useState({
-        search: initialSearch.trim(),
-        language: '',
-        location: '',
-    });
-
-    useEffect(() => {
-        const timeout = window.setTimeout(
-            () =>
-                setDebouncedFilters({
-                    search: search.trim(),
-                    language: language.trim(),
-                    location: location.trim(),
-                }),
-            300,
-        );
-
-        return () => window.clearTimeout(timeout);
-    }, [search, language, location]);
-
-    const testimoniesQuery = useQuery({
-        queryKey: ['testimonies', debouncedFilters] as const,
-        queryFn: ({ signal }) =>
-            debouncedFilters.search
-                ? searchTestimonies(
-                      {
-                          search: debouncedFilters.search,
-                          language: debouncedFilters.language || undefined,
-                          location: debouncedFilters.location || undefined,
-                      },
-                      signal,
-                  )
-                : listTestimonyMetadata(
-                      {
-                          language: debouncedFilters.language || undefined,
-                          location: debouncedFilters.location || undefined,
-                      },
-                      signal,
-                  ),
-    });
-    const languagesQuery = useQuery({
-        queryKey: ['testimony-languages'],
-        queryFn: ({ signal }) => listLanguages(signal),
-    });
+    const filters = useMemo(
+        () => ({
+            search: search.trim(),
+            language: language.trim(),
+            location: location.trim(),
+        }),
+        [language, location, search],
+    );
+    const activeFilters = useDebouncedValue(filters, 300);
+    const testimoniesQuery = useTestimonies(activeFilters);
+    const languagesQuery = useTestimonyLanguages();
     const visibleTestimonies =
         testimoniesQuery.data?.filter(
             (testimony) => !excludedDocIds.includes(testimony.id),
@@ -123,7 +86,7 @@ export const BrowseView = ({
                                     onExcerptSelect(
                                         docId,
                                         anchor,
-                                        debouncedFilters.search,
+                                        activeFilters.search,
                                     )
                                 }
                             />

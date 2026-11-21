@@ -1,4 +1,4 @@
-import { formatTimecode } from './documentModel';
+import { formatTimecode } from '../components/documentModel';
 
 interface TapeFooterProps {
     tape: number;

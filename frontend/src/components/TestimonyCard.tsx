@@ -1,6 +1,6 @@
 import type { TestimonySearchResult, TestimonySummary } from '../api/types';
 import personImage from '../assets/person.png';
-import { HighlightedText } from './HighlightedText';
+import { HighlightedText } from '../components/HighlightedText';
 
 interface TestimonyCardProps {
     testimony: TestimonySummary | TestimonySearchResult;

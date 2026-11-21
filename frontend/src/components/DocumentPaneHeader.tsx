@@ -2,28 +2,29 @@ import { faFileLines } from '@fortawesome/free-regular-svg-icons';
 import { faMagnifyingGlass } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Link } from 'react-router';
+import { buildBrowsePath, type ReaderRole } from '../readerUrl';
 
 interface DocumentPaneHeaderProps {
     title?: string;
     documentId: string;
+    role: ReaderRole;
+    browseSearch: string;
+    search: string;
+    onSearchChange: (value: string) => void;
+    showTargetPicker: boolean;
+}
+
+interface DocumentActionProps {
     browsePath: string;
     browseSearch: string;
     browseLabel: string;
-    idPrefix: string;
-    search: string;
-    onSearchChange: (value: string) => void;
-    secondaryBrowsePath?: string;
-    secondaryBrowseLabel?: string;
 }
 
 const DocumentAction = ({
     browsePath,
     browseSearch,
     browseLabel,
-}: Pick<
-    DocumentPaneHeaderProps,
-    'browsePath' | 'browseSearch' | 'browseLabel'
->) => (
+}: DocumentActionProps) => (
     <Link
         to={{ pathname: browsePath, search: browseSearch }}
         aria-label={browseLabel}
@@ -41,15 +42,22 @@ const DocumentAction = ({
 export const DocumentPaneHeader = ({
     title,
     documentId,
-    browsePath,
+    role,
     browseSearch,
-    browseLabel,
-    idPrefix,
     search,
     onSearchChange,
-    secondaryBrowsePath,
-    secondaryBrowseLabel,
+    showTargetPicker,
 }: DocumentPaneHeaderProps) => {
+    const browsePath = buildBrowsePath(role);
+    const browseLabel = `Change ${role} document`;
+    const secondaryBrowsePath = showTargetPicker
+        ? buildBrowsePath('target')
+        : undefined;
+    const secondaryBrowseLabel = secondaryBrowsePath
+        ? 'Choose target document'
+        : undefined;
+    const idPrefix = role;
+
     const identity = (
         <div className="flex min-w-0 basis-52 grow items-center gap-2">
             <DocumentAction
