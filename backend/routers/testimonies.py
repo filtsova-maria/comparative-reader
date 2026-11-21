@@ -14,13 +14,11 @@ from backend.schemas import TestimonyData, TestimonyMetadata, TestimonySummary
 router = APIRouter()
 
 
-@router.get("/api/testimonies", response_model=list[TestimonySummary])
-def list_testimony_summaries(
-    search: str | None = Query(default=None),
-    language: str | None = Query(default=None),
-    location: str | None = Query(default=None),
-    limit: int = Query(default=100, ge=1, le=500),
-    offset: int = Query(default=0, ge=0),
+def _filtered_testimony_summaries(
+    search: str | None,
+    language: str | None,
+    location: str | None,
+    excluded_ids: list[str],
 ) -> list[TestimonySummary]:
     testimonies = [to_summary(metadata) for metadata in load_all_metadata()]
     if search and (query := search.strip()):
@@ -45,8 +43,42 @@ def list_testimony_summaries(
             for testimony in testimonies
             if selected_location in (testimony.location or "").casefold()
         ]
+    excluded_id_set = set(excluded_ids)
+    if excluded_id_set:
+        testimonies = [
+            testimony
+            for testimony in testimonies
+            if testimony.id not in excluded_id_set
+        ]
     testimonies.sort(key=lambda testimony: testimony.name.casefold())
+    return testimonies
+
+
+@router.get("/api/testimonies", response_model=list[TestimonySummary])
+def list_testimony_summaries(
+    search: str | None = Query(default=None),
+    language: str | None = Query(default=None),
+    location: str | None = Query(default=None),
+    excluded_ids: list[str] = Query(default=[]),
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+) -> list[TestimonySummary]:
+    testimonies = _filtered_testimony_summaries(
+        search, language, location, excluded_ids
+    )
     return testimonies[offset : offset + limit]
+
+
+@router.get("/api/testimonies/count", response_model=int)
+def count_testimony_summaries(
+    search: str | None = Query(default=None),
+    language: str | None = Query(default=None),
+    location: str | None = Query(default=None),
+    excluded_ids: list[str] = Query(default=[]),
+) -> int:
+    return len(
+        _filtered_testimony_summaries(search, language, location, excluded_ids)
+    )
 
 
 @router.get("/api/languages", response_model=list[str])

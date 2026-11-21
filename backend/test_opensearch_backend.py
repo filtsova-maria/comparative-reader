@@ -246,6 +246,37 @@ class BackendTests(unittest.TestCase):
         self.assertEqual(languages.json(), ["Czech", "English"])
         self.assertEqual(load.call_count, 2)
 
+    def test_testimony_count_and_exclusions_match_paginated_list(self) -> None:
+        metadata = [
+            {
+                "Testimony": {"IntCode": identifier, "LanguageLabel": "English"},
+                "Bio": {"FullName": name},
+            }
+            for identifier, name in [(1, "Ada"), (2, "Albert"), (3, "Grace")]
+        ]
+        with patch(
+            "backend.routers.testimonies.load_all_metadata",
+            return_value=metadata,
+        ):
+            with TestClient(app) as client:
+                response = client.get(
+                    "/api/testimonies",
+                    params=[
+                        ("excluded_ids", "00001"),
+                        ("limit", "1"),
+                        ("offset", "1"),
+                    ],
+                )
+                count = client.get(
+                    "/api/testimonies/count",
+                    params=[("excluded_ids", "00001")],
+                )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([item["name"] for item in response.json()], ["Grace"])
+        self.assertEqual(count.status_code, 200)
+        self.assertEqual(count.json(), 2)
+
     def test_metadata_cache_does_not_reload_files(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             metadata_dir = Path(temporary_directory)

@@ -57,8 +57,11 @@ Set `CORS_ORIGINS` to a comma-separated list to override the default local
 frontend origins.
 
 The testimony list endpoint returns at most 100 records by default. Use
-`limit` (up to 500) and `offset` to page through results. Metadata is cached
-until the API process restarts.
+`limit` (up to 500) and `offset` to page through results. Use the
+`/api/testimonies/count` endpoint with the same filters to get the matching
+total. Both endpoints accept repeated `excluded_ids` parameters to omit
+already-selected testimonies. Metadata is cached until the API
+process restarts.
 
 Re-run transcript preprocessing and `python -m backend.index_opensearch` after
 changing transcripts, metadata, or the search index mapping. The indexer

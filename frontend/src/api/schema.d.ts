@@ -21,32 +21,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    '/api/search/testimonies': {
+    '/api/testimonies/count': {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Search Testimonies */
-        get: operations['search_testimonies_api_search_testimonies_get'];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    '/api/search/testimonies/{testimony_id}': {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Search In Testimony */
-        get: operations['search_in_testimony_api_search_testimonies__testimony_id__get'];
+        /** Count Testimony Summaries */
+        get: operations['count_testimony_summaries_api_testimonies_count_get'];
         put?: never;
         post?: never;
         delete?: never;
@@ -98,6 +81,40 @@ export interface paths {
         };
         /** Get Testimony Data */
         get: operations['get_testimony_data_api_testimonies__testimony_id__data_get'];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    '/api/search/testimonies': {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search Testimonies */
+        get: operations['search_testimonies_api_search_testimonies_get'];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    '/api/search/testimonies/{testimony_id}': {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search In Testimony */
+        get: operations['search_in_testimony_api_search_testimonies__testimony_id__get'];
         put?: never;
         post?: never;
         delete?: never;
@@ -281,6 +298,7 @@ export interface operations {
                 search?: string | null;
                 language?: string | null;
                 location?: string | null;
+                excluded_ids?: string[];
                 limit?: number;
                 offset?: number;
             };
@@ -310,12 +328,13 @@ export interface operations {
             };
         };
     };
-    search_testimonies_api_search_testimonies_get: {
+    count_testimony_summaries_api_testimonies_count_get: {
         parameters: {
-            query: {
-                search: string;
+            query?: {
+                search?: string | null;
                 language?: string | null;
                 location?: string | null;
+                excluded_ids?: string[];
             };
             header?: never;
             path?: never;
@@ -329,40 +348,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    'application/json': components['schemas']['TestimonySearchResult'][];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    'application/json': components['schemas']['HTTPValidationError'];
-                };
-            };
-        };
-    };
-    search_in_testimony_api_search_testimonies__testimony_id__get: {
-        parameters: {
-            query: {
-                q: string;
-            };
-            header?: never;
-            path: {
-                testimony_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    'application/json': components['schemas']['DocSearchResponse'];
+                    'application/json': number;
                 };
             };
             /** @description Validation Error */
@@ -445,6 +431,72 @@ export interface operations {
                 };
                 content: {
                     'application/json': components['schemas']['TestimonyData'];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['HTTPValidationError'];
+                };
+            };
+        };
+    };
+    search_testimonies_api_search_testimonies_get: {
+        parameters: {
+            query: {
+                search: string;
+                language?: string | null;
+                location?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['TestimonySearchResult'][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['HTTPValidationError'];
+                };
+            };
+        };
+    };
+    search_in_testimony_api_search_testimonies__testimony_id__get: {
+        parameters: {
+            query: {
+                q: string;
+            };
+            header?: never;
+            path: {
+                testimony_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['DocSearchResponse'];
                 };
             };
             /** @description Validation Error */

@@ -10,7 +10,10 @@ import type {
 } from './types';
 
 function buildQueryParams(
-    params: Record<string, string | number | null | undefined>,
+    params: Record<
+        string,
+        string | number | readonly string[] | null | undefined
+    >,
     omitEmpty = false,
 ): URLSearchParams {
     const searchParams = new URLSearchParams();
@@ -20,6 +23,12 @@ function buildQueryParams(
             value === null ||
             (omitEmpty && value === '')
         ) {
+            continue;
+        }
+        if (Array.isArray(value)) {
+            for (const item of value) {
+                searchParams.append(key, item);
+            }
             continue;
         }
         searchParams.set(key, String(value));
@@ -36,6 +45,30 @@ export async function listTestimonyMetadata(
     return fetchJson(
         `/api/testimonies${query ? `?${query}` : ''}`,
         'Failed to fetch testimonies',
+        signal,
+    );
+}
+
+export async function countTestimonies(
+    params: {
+        language?: string | null;
+        location?: string | null;
+        excluded_ids?: string[];
+    },
+    signal?: AbortSignal,
+): Promise<number> {
+    const searchParams = buildQueryParams(
+        {
+            language: params.language,
+            location: params.location,
+            excluded_ids: params.excluded_ids,
+        },
+        true,
+    );
+    const query = searchParams.toString();
+    return fetchJson(
+        `/api/testimonies/count${query ? `?${query}` : ''}`,
+        'Failed to count testimonies',
         signal,
     );
 }

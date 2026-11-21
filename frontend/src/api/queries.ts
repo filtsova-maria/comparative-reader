@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import type { ListTestimonyParams, SearchTestimonyParams } from './types';
 import {
+    countTestimonies,
     getTestimonyData,
     getTestimonyMetadata,
     listLanguages,
@@ -15,10 +16,23 @@ export interface TestimonyFilters {
     location: string;
 }
 
-export function useTestimonies(filters: TestimonyFilters) {
+export interface TestimonyPagination {
+    limit: number;
+    offset: number;
+}
+
+export function useTestimonies(
+    filters: TestimonyFilters,
+    pagination: TestimonyPagination,
+    excludedIds: string[],
+) {
     const { search, language, location } = filters;
     return useQuery({
-        queryKey: ['testimonies', filters] as const,
+        queryKey: [
+            'testimonies',
+            filters,
+            search ? 'search' : { ...pagination, excludedIds },
+        ] as const,
         queryFn: ({ signal }) =>
             search
                 ? searchTestimonies(
@@ -33,9 +47,36 @@ export function useTestimonies(filters: TestimonyFilters) {
                       {
                           language: language || undefined,
                           location: location || undefined,
+                          excluded_ids: excludedIds,
+                          limit: pagination.limit,
+                          offset: pagination.offset,
                       } satisfies ListTestimonyParams,
                       signal,
                   ),
+    });
+}
+
+export function useTestimonyCount(
+    filters: TestimonyFilters,
+    excludedIds: string[],
+) {
+    return useQuery({
+        queryKey: [
+            'testimony-count',
+            filters.language,
+            filters.location,
+            excludedIds,
+        ] as const,
+        queryFn: ({ signal }) =>
+            countTestimonies(
+                {
+                    language: filters.language || undefined,
+                    location: filters.location || undefined,
+                    excluded_ids: excludedIds,
+                },
+                signal,
+            ),
+        enabled: !filters.search,
     });
 }
 
